@@ -7,12 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String?
-  lastName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String     @id @default(uuid())
+  email                String     @unique
+  password             String
+  firstName            String?
+  lastName             String?
+  role                 Role       @default(USER)
+  isActive             Boolean    @default(true)
+  refreshToken         String?
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  auditLogs            AuditLog[]
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String
+  entityName String
+  entityId   String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  timestamp  DateTime @default(now())
+  metadata   Json?
 }
