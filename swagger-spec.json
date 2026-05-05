@@ -231,6 +231,26 @@
         ]
       }
     },
+    "/users/fcm-token": {
+      "patch": {
+        "operationId": "UsersController_updateFcmToken",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "FCM token updated"
+          }
+        },
+        "security": [
+          {
+            "JWT-auth": []
+          }
+        ],
+        "summary": "Update FCM token for current user",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/users": {
       "get": {
         "operationId": "UsersController_findAll",

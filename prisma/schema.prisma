@@ -2,6 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "../docs/database-schema.md"
+  title    = "Database Schema"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")

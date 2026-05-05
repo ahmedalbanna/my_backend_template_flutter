@@ -25,6 +25,12 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## 📚 Living Documentation
+This project uses a "Living Documentation" strategy. The source of truth for architecture, API contracts, and database schema is located in the `docs/` folder.
+
+- **[Browse Documentation](./docs/README.md)**
+- **Generate/Update Docs**: Run `npm run generate:docs` to update API contracts and directory structure.
+
 ## Project setup
 
 ```bash

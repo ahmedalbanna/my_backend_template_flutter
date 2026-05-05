@@ -18,7 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "generate:api-spec": "ts-node scripts/generate-swagger.ts"
+    "generate:api-spec": "ts-node scripts/generate-swagger.ts",
+    "generate:docs": "ts-node scripts/generate-docs.ts"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.4",
@@ -32,7 +33,6 @@
     "@nestjs/swagger": "^11.4.2",
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
-    "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
     "class-transformer": "^0.5.1",
@@ -51,6 +51,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@prisma/client": "6.19.3",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
@@ -65,7 +66,9 @@
     "globals": "^17.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
-    "prisma": "^6.19.3",
+    "prisma": "6.19.3",
+    "prisma-docs-generator": "^0.8.0",
+    "prisma-markdown": "3.0.1",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
@@ -73,7 +76,8 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "widdershins": "^4.0.1"
   },
   "jest": {
     "moduleFileExtensions": [
