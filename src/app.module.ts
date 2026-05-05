@@ -10,6 +10,9 @@ import { EmailModule } from './shared/email/email.module';
 import { QueueModule } from './shared/queue/queue.module';
 import { AuditModule } from './shared/audit/audit.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { FirebaseModule } from './shared/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -23,6 +26,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
         allowUnknown: true,
       },
     }),
+
+    // ─── Task Scheduling ────────────────────────────────────────────────────
+    ScheduleModule.forRoot(),
 
     // ─── Rate Limiting ──────────────────────────────────────────────────────
     ThrottlerModule.forRoot([
@@ -40,11 +46,13 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
     // ─── Core Modules ───────────────────────────────────────────────────────
     PrismaModule,
+    FirebaseModule,
 
     // ─── Feature Modules ────────────────────────────────────────────────────
     AuthModule,
     UsersModule,
     HealthModule,
+    NotificationsModule,
 
     // ─── Shared Services ────────────────────────────────────────────────────
     EmailModule,

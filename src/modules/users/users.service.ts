@@ -52,4 +52,8 @@ export class UsersService {
     await this.usersRepository.remove(id);
     return { message: 'User deleted successfully' };
   }
+
+  async updateFcmToken(id: string, token: string): Promise<void> {
+    await this.usersRepository.update(id, { fcmToken: token });
+  }
 }

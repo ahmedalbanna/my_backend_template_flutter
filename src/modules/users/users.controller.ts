@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Delete,
   Param,
   Body,
@@ -53,6 +54,16 @@ export class UsersController {
     // Users cannot change their own role
     const { role, isActive, ...safeDto } = dto;
     return this.usersService.update(user.userId, safeDto);
+  }
+
+  @Patch('fcm-token')
+  @ApiOperation({ summary: 'Update FCM token for current user' })
+  @ApiResponse({ status: 200, description: 'FCM token updated' })
+  updateFcmToken(
+    @CurrentUser() user: { userId: string },
+    @Body('token') token: string,
+  ) {
+    return this.usersService.updateFcmToken(user.userId, token);
   }
 
   // ─── Admin: All Users ──────────────────────────────────────────────────────
