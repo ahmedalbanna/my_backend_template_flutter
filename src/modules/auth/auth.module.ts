@@ -8,6 +8,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { EmailModule } from '../../shared/email/email.module';
 
+import { AuthRepository } from './auth.repository';
+
 @Module({
   imports: [
     UsersModule,
@@ -25,6 +27,6 @@ import { EmailModule } from '../../shared/email/email.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, AuthRepository],
 })
 export class AuthModule {}

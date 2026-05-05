@@ -16,6 +16,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../../shared/email/email.service';
 
+import { AuthRepository } from './auth.repository';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -23,6 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: EmailService,
+    private authRepository: AuthRepository,
   ) {}
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -71,7 +74,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(user.id, user.email);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
-    await this.usersService.updateRefreshToken(user.id, hashedRefreshToken);
+    await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
     await this.emailService.sendWelcome(user.email, user.firstName ?? 'User');
 
@@ -92,7 +95,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(user.id, user.email);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
-    await this.usersService.updateRefreshToken(user.id, hashedRefreshToken);
+    await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
     return { ...tokens, user };
   }
@@ -124,7 +127,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(user.id, user.email);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
-    await this.usersService.updateRefreshToken(user.id, hashedRefreshToken);
+    await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
     return tokens;
   }
@@ -132,7 +135,7 @@ export class AuthService {
   // ─── Logout ──────────────────────────────────────────────────────────────────
 
   async logout(userId: string): Promise<{ message: string }> {
-    await this.usersService.updateRefreshToken(userId, null);
+    await this.authRepository.updateRefreshToken(userId, null);
     return { message: 'Logged out successfully' };
   }
 
@@ -148,7 +151,7 @@ export class AuthService {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    await this.usersService.setPasswordResetToken(user.id, resetToken, expires);
+    await this.authRepository.setPasswordResetToken(user.id, resetToken, expires);
     await this.emailService.sendPasswordReset(
       user.email,
       user.firstName ?? 'User',
@@ -161,15 +164,15 @@ export class AuthService {
   // ─── Reset Password ───────────────────────────────────────────────────────────
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    const user = await this.usersService.findByResetToken(dto.token);
+    const user = await this.authRepository.findByResetToken(dto.token);
     if (!user) {
       throw new NotFoundException('Invalid or expired reset token');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-    await this.usersService.updatePassword(user.id, hashedPassword);
+    await this.authRepository.updatePassword(user.id, hashedPassword);
     // Invalidate all tokens
-    await this.usersService.updateRefreshToken(user.id, null);
+    await this.authRepository.updateRefreshToken(user.id, null);
 
     return { message: 'Password reset successfully' };
   }

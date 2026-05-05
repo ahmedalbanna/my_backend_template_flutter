@@ -18,15 +18,6 @@ export class UsersRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findByResetToken(token: string): Promise<User | null> {
-    return this.prisma.user.findFirst({
-      where: {
-        passwordResetToken: token,
-        passwordResetExpires: { gt: new Date() },
-      },
-    });
-  }
-
   async findAll(params: {
     skip?: number;
     take?: number;
@@ -43,35 +34,6 @@ export class UsersRepository {
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({ where: { id }, data });
-  }
-
-  async updateRefreshToken(id: string, refreshToken: string | null): Promise<void> {
-    await this.prisma.user.update({
-      where: { id },
-      data: { refreshToken },
-    });
-  }
-
-  async updatePassword(id: string, password: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id },
-      data: {
-        password,
-        passwordResetToken: null,
-        passwordResetExpires: null,
-      },
-    });
-  }
-
-  async setPasswordResetToken(
-    id: string,
-    token: string,
-    expires: Date,
-  ): Promise<void> {
-    await this.prisma.user.update({
-      where: { id },
-      data: { passwordResetToken: token, passwordResetExpires: expires },
-    });
   }
 
   async remove(id: string): Promise<User> {
