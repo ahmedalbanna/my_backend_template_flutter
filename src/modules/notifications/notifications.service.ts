@@ -1,12 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { FirebaseService } from '../../shared/firebase/firebase.service';
+import { PrismaService } from '../../shared/prisma/prisma.service';
 import * as admin from 'firebase-admin';
+
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private firebaseService: FirebaseService) {}
+  constructor(
+    private firebaseService: FirebaseService,
+    private prisma: PrismaService,
+  ) {}
+
 
   async sendToDevice(token: string, title: string, body: string, data?: Record<string, string>) {
     if (!this.firebaseService.messaging) {
@@ -62,4 +68,26 @@ export class NotificationsService {
       throw error;
     }
   }
+
+  async findAllByUser(userId: string) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async markAsRead(id: string, userId: string) {
+    return this.prisma.notification.update({
+      where: { id, userId },
+      data: { isRead: true },
+    });
+  }
+
+  async markAllAsRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+  }
 }
+

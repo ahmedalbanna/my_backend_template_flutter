@@ -26,7 +26,7 @@ export class AuthService {
     private configService: ConfigService,
     private emailService: EmailService,
     private authRepository: AuthRepository,
-  ) {}
+  ) { }
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 

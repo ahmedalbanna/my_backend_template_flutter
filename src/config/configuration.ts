@@ -5,7 +5,7 @@ export default () => ({
 
   app: {
     baseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:4200',
+    // frontendUrl: process.env.FRONTEND_URL || 'http://localhost:4200',
   },
 
   database: {
@@ -13,9 +13,9 @@ export default () => ({
   },
 
   jwt: {
-    secret: process.env.JWT_SECRET || 'super-secret',
+    secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'super-refresh-secret',
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 

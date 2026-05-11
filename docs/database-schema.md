@@ -23,6 +23,16 @@ erDiagram
   DateTime createdAt
   DateTime updatedAt
 }
+"Product" {
+  String id PK
+  String name
+  String description "nullable"
+  Float price
+  String imageUrl "nullable"
+  Int stock
+  DateTime createdAt
+  DateTime updatedAt
+}
 "AuditLog" {
   String id PK
   String action
@@ -32,7 +42,17 @@ erDiagram
   DateTime timestamp
   Json metadata "nullable"
 }
+"Notification" {
+  String id PK
+  String title
+  String body
+  Json data "nullable"
+  Boolean isRead
+  String userId FK
+  DateTime createdAt
+}
 "AuditLog" }o--o| "User" : user
+"Notification" }o--|| "User" : user
 ```
 
 ### `User`
@@ -53,6 +73,19 @@ Properties as follows:
 - `createdAt`:
 - `updatedAt`:
 
+### `Product`
+
+Properties as follows:
+
+- `id`:
+- `name`:
+- `description`:
+- `price`:
+- `imageUrl`:
+- `stock`:
+- `createdAt`:
+- `updatedAt`:
+
 ### `AuditLog`
 
 Properties as follows:
@@ -64,3 +97,15 @@ Properties as follows:
 - `userId`:
 - `timestamp`:
 - `metadata`:
+
+### `Notification`
+
+Properties as follows:
+
+- `id`:
+- `title`:
+- `body`:
+- `data`:
+- `isRead`:
+- `userId`:
+- `createdAt`:

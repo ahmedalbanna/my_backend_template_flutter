@@ -1,4 +1,4 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -42,7 +42,8 @@ async function bootstrap() {
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
   app.enableCors({
-    origin: '*'
+    // origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+    credentials: true,
   });
 
   // ─── Start Server ─────────────────────────────────────────────────────────

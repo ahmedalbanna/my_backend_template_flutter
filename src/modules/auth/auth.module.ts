@@ -29,4 +29,4 @@ import { AuthRepository } from './auth.repository';
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, AuthRepository],
 })
-export class AuthModule {}
+export class AuthModule { }

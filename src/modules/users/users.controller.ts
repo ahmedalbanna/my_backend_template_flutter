@@ -66,7 +66,22 @@ export class UsersController {
     return this.usersService.updateFcmToken(user.userId, token);
   }
 
+  @Delete('me')
+  @ApiOperation({ summary: 'Delete current authenticated user account' })
+  @ApiResponse({ status: 200, description: 'Account deleted successfully' })
+  removeMe(@CurrentUser() user: { userId: string }) {
+    return this.usersService.remove(user.userId);
+  }
+
+  @Get('me/audit-logs')
+  @ApiOperation({ summary: 'Get audit logs for current user' })
+  @ApiResponse({ status: 200, description: 'Audit logs returned' })
+  getAuditLogs(@CurrentUser() user: { userId: string }) {
+    return this.usersService.getAuditLogs(user.userId);
+  }
+
   // ─── Admin: All Users ──────────────────────────────────────────────────────
+
 
   @Get()
   @Roles('ADMIN')

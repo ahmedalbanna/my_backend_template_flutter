@@ -12,6 +12,7 @@ import { AuditModule } from './shared/audit/audit.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ProductsModule } from './modules/products/products.module';
 import { FirebaseModule } from './shared/firebase/firebase.module';
 
 @Module({
@@ -53,6 +54,7 @@ import { FirebaseModule } from './shared/firebase/firebase.module';
     UsersModule,
     HealthModule,
     NotificationsModule,
+    ProductsModule,
 
     // ─── Shared Services ────────────────────────────────────────────────────
     EmailModule,
