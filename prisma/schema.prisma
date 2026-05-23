@@ -23,5 +23,15 @@ model User {
   passwordResetExpires DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  // ── Performance indexes ─────────────────────────────────────
+  // Index on role for ADMIN/USER filtering in admin endpoints
+  @@index([role])
+  // Composite index for OTP verification: look up by hash + expiry check
+  @@index([otpHash, otpExpiresAt])
+  // Index on isActive for potential filtering of active/inactive users
+  @@index([isActive])
+  // Index on passwordResetExpires for reset token expiry queries
+  @@index([passwordResetExpires])
 }
 

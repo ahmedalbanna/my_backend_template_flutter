@@ -157,7 +157,7 @@ describe('UsersService', () => {
   /* ─────────────── remove ─────────────── */
   describe('remove', () => {
     it('should delete user and return confirmation', async () => {
-      repository.remove!.mockResolvedValue(mockUser);
+      repository.remove!.mockResolvedValue(undefined);
       const result = await service.remove('1');
       expect(result).toEqual({ message: 'User deleted successfully' });
       expect(repository.remove).toHaveBeenCalledWith('1');

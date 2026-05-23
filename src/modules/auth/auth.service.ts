@@ -151,7 +151,11 @@ export class AuthService {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedResetToken = await bcrypt.hash(resetToken, 10);
+    // SHA-256 hash enables indexed lookups (eliminates N+1 scans).
+    const hashedResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000);
 
     await this.authRepository.setPasswordResetToken(
@@ -164,27 +168,22 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    const usersWithTokens =
-      await this.authRepository.findUsersWithValidResetTokens();
-    let matchedUser: { id: string } | null = null;
+    // Hash the incoming token with SHA-256 for indexed lookup
+    // instead of brute-force scanning all users with valid tokens (O(n) → O(1)).
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
 
-    for (const u of usersWithTokens) {
-      if (
-        u.passwordResetToken &&
-        (await bcrypt.compare(dto.token, u.passwordResetToken))
-      ) {
-        matchedUser = u;
-        break;
-      }
-    }
+    const user = await this.authRepository.findByResetToken(tokenHash);
 
-    if (!matchedUser) {
+    if (!user) {
       throw new NotFoundException('Invalid or expired reset token');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-    await this.authRepository.updatePassword(matchedUser.id, hashedPassword);
-    await this.authRepository.updateRefreshToken(matchedUser.id, null);
+    await this.authRepository.updatePassword(user.id, hashedPassword);
+    await this.authRepository.updateRefreshToken(user.id, null);
 
     return { message: 'Password reset successfully' };
   }

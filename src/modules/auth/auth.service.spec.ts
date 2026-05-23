@@ -48,7 +48,6 @@ describe('AuthService', () => {
 
     authRepository = {
       findByResetToken: jest.fn(),
-      findUsersWithValidResetTokens: jest.fn(),
       updateRefreshToken: jest.fn(),
       updatePassword: jest.fn(),
       setPasswordResetToken: jest.fn(),
@@ -260,10 +259,16 @@ describe('AuthService', () => {
     it('should set reset token when user exists', async () => {
       const mockUser = { id: '1', email: 'a@b.com' };
       usersService.findByEmail!.mockResolvedValueOnce(mockUser as any);
+      // crypto.randomBytes is mocked at the top of the file
       (crypto.randomBytes as jest.Mock).mockReturnValue(
         Buffer.from('a'.repeat(32)),
       );
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-reset-token');
+      // Compute what SHA-256(resetToken.toString('hex')) will be
+      const hexToken = Buffer.from('a'.repeat(32)).toString('hex');
+      const expectedHash = crypto
+        .createHash('sha256')
+        .update(hexToken)
+        .digest('hex');
 
       const result = await service.forgotPassword({
         email: 'a@b.com',
@@ -271,7 +276,7 @@ describe('AuthService', () => {
 
       expect(authRepository.setPasswordResetToken).toHaveBeenCalledWith(
         '1',
-        'hashed-reset-token',
+        expectedHash,
         expect.any(Date),
       );
       expect(result.message).toBe(
@@ -282,18 +287,15 @@ describe('AuthService', () => {
 
   /* ─────────────── resetPassword ─────────────── */
   describe('resetPassword', () => {
-    it('should throw NotFoundException if no users with valid tokens', async () => {
-      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([]);
+    it('should throw NotFoundException if token lookup returns nothing', async () => {
+      authRepository.findByResetToken!.mockResolvedValueOnce(null);
       await expect(
         service.resetPassword({ token: 'bad', newPassword: 'newPass123' }),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw NotFoundException if token does not match any user', async () => {
-      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([
-        { id: '1', passwordResetToken: 'stored-hash' },
-      ] as any);
-      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+    it('should throw NotFoundException if no user matches the token hash', async () => {
+      authRepository.findByResetToken!.mockResolvedValueOnce(null);
 
       await expect(
         service.resetPassword({ token: 'bad', newPassword: 'newPass123' }),
@@ -301,10 +303,9 @@ describe('AuthService', () => {
     });
 
     it('should update password and clear refresh tokens on success', async () => {
-      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([
-        { id: '1', passwordResetToken: 'stored-hash' },
-      ] as any);
-      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      authRepository.findByResetToken!.mockResolvedValueOnce({
+        id: '1',
+      });
       (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-pw');
 
       const result = await service.resetPassword({
