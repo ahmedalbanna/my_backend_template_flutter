@@ -58,29 +58,62 @@ export class AuthService {
     return bcrypt.hash(token, 10);
   }
 
-  async validateUser(email: string, pass: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (user?.password && (await bcrypt.compare(pass, user.password))) {
-      const { password: _password, ...result } = user;
-      void _password;
-      return result;
-    }
+  private async findUserByIdentifier(email?: string, phone?: string) {
+    if (email) return this.usersService.findByEmail(email);
+    if (phone) return this.usersService.findByPhone(phone);
     return null;
   }
 
+  private assertIdentifierProvided(email?: string, phone?: string): void {
+    if (!email && !phone) {
+      throw new BadRequestException(
+        'At least one of email or phone must be provided',
+      );
+    }
+  }
+
   async register(registerDto: RegisterDto) {
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
-      throw new BadRequestException('Email already in use');
+    const { email, phone, password, firstName, lastName } = registerDto;
+    this.assertIdentifierProvided(email, phone);
+
+    if (email) {
+      const existing = await this.usersService.findByEmail(email);
+      if (existing) {
+        throw new BadRequestException('Email already in use');
+      }
     }
 
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    if (phone && password) {
+      const existingPhone = await this.usersService.findByPhone(phone);
+      if (existingPhone?.isActive) {
+        throw new BadRequestException('Phone number already in use');
+      }
+    }
+
+    const hashedPassword = password
+      ? await bcrypt.hash(password, 10)
+      : undefined;
     const user = await this.usersService.create({
-      ...registerDto,
-      password: hashedPassword,
+      ...(email && { email }),
+      ...(phone && { phone }),
+      ...(hashedPassword && { password: hashedPassword }),
+      ...(firstName && { firstName }),
+      ...(lastName && { lastName }),
+      ...(!password && { isActive: false }),
     });
 
-    const tokens = this.generateTokens(user.id, user.email ?? undefined);
+    if (!password) {
+      return {
+        message: 'Account created. Please verify your phone via OTP.',
+        userId: user.id,
+      };
+    }
+
+    const tokens = this.generateTokens(
+      user.id,
+      user.email ?? undefined,
+      user.phone ?? undefined,
+    );
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
@@ -94,19 +127,40 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+    const { email, phone, password } = loginDto;
+    this.assertIdentifierProvided(email, phone);
+
+    const user = await this.findUserByIdentifier(email, phone);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    const isPasswordValid = user.password
+      ? await bcrypt.compare(password, user.password)
+      : false;
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     if (user.isActive === false) {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const tokens = this.generateTokens(user.id, user.email ?? undefined);
+    const tokens = this.generateTokens(
+      user.id,
+      user.email ?? undefined,
+      user.phone ?? undefined,
+    );
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
-    return { ...tokens, user };
+    const {
+      password: _password,
+      refreshToken: _refreshToken,
+      ...result
+    } = user;
+    void [_password, _refreshToken];
+    return { ...tokens, user: result };
   }
 
   async refreshTokens(dto: RefreshTokenDto) {
@@ -132,7 +186,11 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token mismatch');
     }
 
-    const tokens = this.generateTokens(user.id, user.email ?? undefined);
+    const tokens = this.generateTokens(
+      user.id,
+      user.email ?? undefined,
+      user.phone ?? undefined,
+    );
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
@@ -151,7 +209,6 @@ export class AuthService {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    // SHA-256 hash enables indexed lookups (eliminates N+1 scans).
     const hashedResetToken = crypto
       .createHash('sha256')
       .update(resetToken)
@@ -168,8 +225,6 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    // Hash the incoming token with SHA-256 for indexed lookup
-    // instead of brute-force scanning all users with valid tokens (O(n) → O(1)).
     const tokenHash = crypto
       .createHash('sha256')
       .update(dto.token)
@@ -194,7 +249,7 @@ export class AuthService {
     return { otp, hash };
   }
 
-  async sendOtp(dto: SendOtpDto): Promise<{ message: string }> {
+  async sendOtp(dto: SendOtpDto): Promise<{ message: string; otp?: string }> {
     let user = await this.usersService.findByPhone(dto.phone);
 
     const { otp, hash } = this.generateOtp();
@@ -211,11 +266,12 @@ export class AuthService {
       });
     }
 
-    void otp;
+    const isDev = this.configService.get<string>('NODE_ENV') !== 'production';
+    if (isDev) {
+      return { message: 'OTP sent successfully (simulated)', otp };
+    }
 
-    return {
-      message: 'OTP sent successfully (simulated)',
-    };
+    return { message: 'OTP sent successfully' };
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<{
@@ -237,7 +293,6 @@ export class AuthService {
     }
 
     const hash = crypto.createHash('sha256').update(dto.otp).digest('hex');
-    // Constant-time comparison to prevent timing attacks on OTP verification
     const hashBuffer = Buffer.from(hash, 'utf8');
     const storedHashBuffer = Buffer.from(user.otpHash, 'utf8');
     const isMatch =

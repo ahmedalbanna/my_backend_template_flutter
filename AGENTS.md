@@ -57,12 +57,25 @@
    - استخدم Jest. اكتب اختبارات للـ Services مع محاكاة (mock) للـ Repository.
    - اختبارات e2e للمسارات باستخدام supertest وقاعدة بيانات اختبارية.
 
-10. النشر والبيئة:
+10. مسارات المصادقة (Multi-Provider Auth):
+    - POST /api/v1/auth/register ← تسجيل بإحدى الطريقتين:
+      * email + password (أو) phone + password (أو) كلاهما
+      * password اختياري إذا كان التسجيل عبر الهاتف فقط (يُكمل بـ OTP)
+      * الشرط: يجب توفير email أو phone على الأقل
+    - POST /api/v1/auth/login ← تسجيل الدخول بـ email+password أو phone+password
+    - POST /api/v1/auth/phone/send-otp ← إرسال OTP وهمي (في وضع التطوير يُرجع الرمز)
+    - POST /api/v1/auth/phone/verify-otp ← التحقق من OTP وتفعيل الحساب
+    - POST /api/v1/auth/refresh ← تجديد التوكنات
+    - POST /api/v1/auth/logout ← تسجيل الخروج (محمي)
+    - POST /api/v1/auth/forgot-password ← طلب إعادة تعيين كلمة المرور
+    - POST /api/v1/auth/reset-password ← إعادة تعيين كلمة المرور بالرمز
+
+12. النشر والبيئة:
     - دعم متغيرات البيئة عبر .env وتحميلها بـ ConfigModule.
     - أرفق Dockerfile و docker-compose.yml لقاعدة البيانات والتطبيق.
     - استخدم متغيرات PORT, DATABASE_URL, JWT_SECRET.
 
-11. القيود:
+13. القيود:
     - لا تضع منطق الأعمال في Controllers.
     - تجنب استخدام any في TypeScript؛ عرّف Types واضحة.
     - جميع المسارات التي تستقبل بيانات تستخدم DTOs مخصصة.

@@ -45,10 +45,11 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
   @ApiOperation({
-    summary: 'Register a new user account',
+    summary: 'Register a new user by email+password or phone+password',
     description:
-      'Creates a new user account and returns JWT access + refresh tokens. ' +
-      'The email must be unique. Password must be at least 6 characters.',
+      'Creates a new user account. Supports: email+password, phone+password, or both. ' +
+      'At least one identifier (email or phone) must be provided. ' +
+      'If password is omitted, a phone-only account is created for OTP verification.',
   })
   @ApiExtraModels(
     ApiSuccessResponse,
@@ -71,7 +72,8 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Validation failed or email already in use',
+    description:
+      'Validation failed, email/phone already in use, or no identifier provided',
     schema: {
       example: {
         success: false,
@@ -91,9 +93,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Authenticate user and receive JWT tokens',
+    summary: 'Authenticate by email+password or phone+password',
     description:
-      'Validates email and password, returns JWT access + refresh tokens. ' +
+      'Validates credentials against the provided identifier (email or phone) and password. ' +
+      'Returns JWT access + refresh tokens. ' +
       'Use the access token in the Authorize header for protected endpoints.',
   })
   @ApiExtraModels(
