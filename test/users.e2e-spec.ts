@@ -35,6 +35,7 @@ describe('UsersController (e2e)', () => {
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new TransformInterceptor());
+    app.setGlobalPrefix('api/v1', { exclude: ['docs', 'docs-json'] });
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -42,7 +43,7 @@ describe('UsersController (e2e)', () => {
     userEmail = `user_e2e_${Date.now()}@example.com`;
 
     const adminRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         email: adminEmail,
         password: 'password123',
@@ -58,7 +59,7 @@ describe('UsersController (e2e)', () => {
     });
 
     const userRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         email: userEmail,
         password: 'password123',
@@ -79,10 +80,10 @@ describe('UsersController (e2e)', () => {
   });
 
   /* ─────────────── GET /users/me ─────────────── */
-  describe('GET /users/me', () => {
+  describe('GET /api/v1/users/me', () => {
     it('should return the authenticated user profile', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users/me')
+        .get('/api/v1/users/me')
         .set('Authorization', `Bearer ${userToken}`);
       expect(res.status).toBe(200);
       expect(res.body.data.email).toBe(userEmail);
@@ -91,16 +92,16 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should fail without auth token', async () => {
-      const res = await request(app.getHttpServer()).get('/users/me');
+      const res = await request(app.getHttpServer()).get('/api/v1/users/me');
       expect(res.status).toBe(401);
     });
   });
 
-  /* ─────────────── PUT /users/me ─────────────── */
-  describe('PUT /users/me', () => {
+  /* ─────────────── PUT /api/v1/users/me ─────────────── */
+  describe('PUT /api/v1/users/me', () => {
     it('should update own profile', async () => {
       const res = await request(app.getHttpServer())
-        .put('/users/me')
+        .put('/api/v1/users/me')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ firstName: 'UpdatedFirst', lastName: 'UpdatedLast' });
       expect(res.status).toBe(200);
@@ -111,7 +112,7 @@ describe('UsersController (e2e)', () => {
 
     it('should ignore role/isActive in self-update', async () => {
       const res = await request(app.getHttpServer())
-        .put('/users/me')
+        .put('/api/v1/users/me')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ role: 'ADMIN', isActive: false });
       expect(res.status).toBe(200);
@@ -121,17 +122,17 @@ describe('UsersController (e2e)', () => {
 
     it('should fail without auth token', async () => {
       const res = await request(app.getHttpServer())
-        .put('/users/me')
+        .put('/api/v1/users/me')
         .send({ firstName: 'Nope' });
       expect(res.status).toBe(401);
     });
   });
 
   /* ─────────────── PATCH /users/fcm-token ─────────────── */
-  describe('PATCH /users/fcm-token', () => {
+  describe('PATCH /api/v1/users/fcm-token', () => {
     it('should update FCM token', async () => {
       const res = await request(app.getHttpServer())
-        .patch('/users/fcm-token')
+        .patch('/api/v1/users/fcm-token')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ token: 'new-fcm-token-123' });
       expect(res.status).toBe(200);
@@ -140,14 +141,14 @@ describe('UsersController (e2e)', () => {
 
     it('should fail without auth token', async () => {
       const res = await request(app.getHttpServer())
-        .patch('/users/fcm-token')
+        .patch('/api/v1/users/fcm-token')
         .send({ token: 'test' });
       expect(res.status).toBe(401);
     });
   });
 
   /* ─────────────── DELETE /users/me ─────────────── */
-  describe('DELETE /users/me', () => {
+  describe('DELETE /api/v1/users/me', () => {
     let tempToken: string;
     let tempEmail: string;
     let tempId: string;
@@ -155,7 +156,7 @@ describe('UsersController (e2e)', () => {
     beforeEach(async () => {
       tempEmail = `temp_e2e_${Date.now()}@example.com`;
       const res = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({ email: tempEmail, password: 'password123' });
       tempToken = res.body.data.accessToken;
       tempId = res.body.data.user.id;
@@ -167,7 +168,7 @@ describe('UsersController (e2e)', () => {
 
     it('should delete own account', async () => {
       const res = await request(app.getHttpServer())
-        .delete('/users/me')
+        .delete('/api/v1/users/me')
         .set('Authorization', `Bearer ${tempToken}`);
       expect(res.status).toBe(200);
       expect(res.body.data.message).toBe('User deleted successfully');
@@ -177,16 +178,16 @@ describe('UsersController (e2e)', () => {
     });
 
     it('should fail without auth token', async () => {
-      const res = await request(app.getHttpServer()).delete('/users/me');
+      const res = await request(app.getHttpServer()).delete('/api/v1/users/me');
       expect(res.status).toBe(401);
     });
   });
 
   /* ─────────────── GET /users (admin only) ─────────────── */
-  describe('GET /users (admin only)', () => {
+  describe('GET /api/v1/users (admin only)', () => {
     it('should return paginated users for admin', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users')
+        .get('/api/v1/users')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -196,7 +197,7 @@ describe('UsersController (e2e)', () => {
 
     it('should support pagination query params', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users?page=1&limit=5&sortBy=email&sortOrder=asc')
+        .get('/api/v1/users?page=1&limit=5&sortBy=email&sortOrder=asc')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.data.meta.page).toBe(1);
@@ -205,22 +206,22 @@ describe('UsersController (e2e)', () => {
 
     it('should deny access for non-admin users', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users')
+        .get('/api/v1/users')
         .set('Authorization', `Bearer ${userToken}`);
       expect(res.status).toBe(403);
     });
 
     it('should deny access for unauthenticated requests', async () => {
-      const res = await request(app.getHttpServer()).get('/users');
+      const res = await request(app.getHttpServer()).get('/api/v1/users');
       expect(res.status).toBe(401);
     });
   });
 
-  /* ─────────────── GET /users/:id (admin only) ─────────────── */
-  describe('GET /users/:id (admin only)', () => {
+  /* ─────────────── GET /api/v1/users/:id (admin only) ─────────────── */
+  describe('GET /api/v1/users/:id (admin only)', () => {
     it('should return a specific user for admin', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/users/${userId}`)
+        .get(`/api/v1/users/${userId}`)
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
       expect(res.body.data.email).toBe(userEmail);
@@ -229,24 +230,24 @@ describe('UsersController (e2e)', () => {
 
     it('should return 404 for non-existent user', async () => {
       const res = await request(app.getHttpServer())
-        .get('/users/non-existent-id')
+        .get('/api/v1/users/non-existent-id')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(404);
     });
 
     it('should deny access for non-admin users', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/users/${adminId}`)
+        .get(`/api/v1/users/${adminId}`)
         .set('Authorization', `Bearer ${userToken}`);
       expect(res.status).toBe(403);
     });
   });
 
-  /* ─────────────── PUT /users/:id (admin only) ─────────────── */
-  describe('PUT /users/:id (admin only)', () => {
+  /* ─────────────── PUT /api/v1/users/:id (admin only) ─────────────── */
+  describe('PUT /api/v1/users/:id (admin only)', () => {
     it('should update any user (including role)', async () => {
       const res = await request(app.getHttpServer())
-        .put(`/users/${userId}`)
+        .put(`/api/v1/users/${userId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ firstName: 'AdminUpdated', role: 'ADMIN' });
       expect(res.status).toBe(200);
@@ -260,28 +261,28 @@ describe('UsersController (e2e)', () => {
 
     it('should deny access for non-admin users', async () => {
       const res = await request(app.getHttpServer())
-        .put(`/users/${adminId}`)
+        .put(`/api/v1/users/${adminId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ firstName: 'hack' });
       expect(res.status).toBe(403);
     });
   });
 
-  /* ─────────────── DELETE /users/:id (admin only) ─────────────── */
-  describe('DELETE /users/:id (admin only)', () => {
+  /* ─────────────── DELETE /api/v1/users/:id (admin only) ─────────────── */
+  describe('DELETE /api/v1/users/:id (admin only)', () => {
     let deleteUserId: string;
 
     beforeEach(async () => {
       const email = `delete_e2e_${Date.now()}@example.com`;
       const res = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({ email, password: 'password123' });
       deleteUserId = res.body.data.user.id;
     });
 
     it('should delete any user by admin', async () => {
       const res = await request(app.getHttpServer())
-        .delete(`/users/${deleteUserId}`)
+        .delete(`/api/v1/users/${deleteUserId}`)
         .set('Authorization', `Bearer ${adminToken}`);
       expect(res.status).toBe(200);
 
@@ -293,7 +294,7 @@ describe('UsersController (e2e)', () => {
 
     it('should deny access for non-admin users', async () => {
       const res = await request(app.getHttpServer())
-        .delete(`/users/${deleteUserId}`)
+        .delete(`/api/v1/users/${deleteUserId}`)
         .set('Authorization', `Bearer ${userToken}`);
       expect(res.status).toBe(403);
     });

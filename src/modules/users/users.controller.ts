@@ -17,9 +17,13 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  getSchemaPath,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -27,6 +31,14 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Permission } from '../../common/permissions';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  ApiSuccessResponse,
+  MessageResponseDto,
+} from '../../common/dto/api-response.dto';
+import {
+  PaginatedResponseDto,
+  PaginationMetaDto,
+} from '../../common/dto/paginated-response.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
@@ -42,24 +54,19 @@ export class UsersController {
     description:
       'Returns the profile of the currently authenticated user. Password and refresh token are excluded.',
   })
+  @ApiExtraModels(ApiSuccessResponse, UserResponseDto)
   @ApiResponse({
     status: 200,
     description: 'User profile returned',
     schema: {
-      example: {
-        success: true,
-        data: {
-          id: 'cmpx0abc123def456',
-          email: 'user@example.com',
-          firstName: 'John',
-          lastName: 'Doe',
-          role: 'USER',
-          isActive: true,
-          fcmToken: null,
-          createdAt: '2026-05-23T12:00:00.000Z',
-          updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(UserResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({ status: 401, description: 'Authentication required' })
@@ -77,23 +84,19 @@ export class UsersController {
       'Updates the profile of the currently authenticated user. ' +
       'Role and isActive fields are ignored — users cannot promote themselves.',
   })
+  @ApiExtraModels(ApiSuccessResponse, UserResponseDto)
   @ApiResponse({
     status: 200,
     description: 'Profile updated',
     schema: {
-      example: {
-        success: true,
-        data: {
-          id: 'cmpx0abc123def456',
-          email: 'newemail@example.com',
-          firstName: 'John',
-          lastName: 'Smith',
-          role: 'USER',
-          isActive: true,
-          createdAt: '2026-05-23T12:00:00.000Z',
-          updatedAt: '2026-05-23T12:01:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(UserResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   updateProfile(
@@ -113,18 +116,26 @@ export class UsersController {
       'Stores a Firebase Cloud Messaging token for the current user. ' +
       'Used to send push notifications to mobile devices.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'FCM token updated',
     schema: {
-      example: { success: true, data: { message: 'FCM token updated' } },
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
     },
   })
   updateFcmToken(
     @CurrentUser() user: { userId: string },
-    @Body('token') token: string,
+    @Body() dto: UpdateFcmTokenDto,
   ) {
-    return this.usersService.updateFcmToken(user.userId, token);
+    return this.usersService.updateFcmToken(user.userId, dto.token);
   }
 
   @Delete('me')
@@ -134,14 +145,19 @@ export class UsersController {
     description:
       'Permanently deletes the current user account. This action cannot be undone.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'Account deleted',
     schema: {
-      example: {
-        success: true,
-        data: { message: 'User deleted successfully' },
-      },
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
     },
   })
   removeMe(@CurrentUser() user: { userId: string }) {
@@ -181,28 +197,36 @@ export class UsersController {
     enum: ['asc', 'desc'],
     description: 'Sort direction',
   })
+  @ApiExtraModels(
+    ApiSuccessResponse,
+    PaginatedResponseDto,
+    PaginationMetaDto,
+    UserResponseDto,
+  )
   @ApiResponse({
     status: 200,
     description: 'Paginated list of users',
     schema: {
-      example: {
-        success: true,
-        data: {
-          data: [
-            {
-              id: 'cmpx0abc123def456',
-              email: 'admin@example.com',
-              firstName: 'Admin',
-              lastName: 'User',
-              role: 'ADMIN',
-              isActive: true,
-              createdAt: '2026-05-23T12:00:00.000Z',
-              updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: {
+              allOf: [
+                { $ref: getSchemaPath(PaginatedResponseDto) },
+                {
+                  properties: {
+                    data: {
+                      type: 'array',
+                      items: { $ref: getSchemaPath(UserResponseDto) },
+                    },
+                  },
+                },
+              ],
             },
-          ],
-          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({ status: 403, description: 'Forbidden — ADMIN role required' })
@@ -219,23 +243,19 @@ export class UsersController {
       'Returns a specific user by their unique ID. Only accessible by ADMIN role.',
   })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiExtraModels(ApiSuccessResponse, UserResponseDto)
   @ApiResponse({
     status: 200,
     description: 'User found',
     schema: {
-      example: {
-        success: true,
-        data: {
-          id: 'cmpx0abc123def456',
-          email: 'user@example.com',
-          firstName: 'John',
-          lastName: 'Doe',
-          role: 'USER',
-          isActive: true,
-          createdAt: '2026-05-23T12:00:00.000Z',
-          updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(UserResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -255,19 +275,19 @@ export class UsersController {
       'this allows changing the role and isActive fields. Only ADMIN.',
   })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiExtraModels(ApiSuccessResponse, UserResponseDto)
   @ApiResponse({
     status: 200,
     description: 'User updated',
     schema: {
-      example: {
-        success: true,
-        data: {
-          id: 'cmpx0abc123def456',
-          email: 'updated@example.com',
-          role: 'ADMIN',
-          isActive: true,
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(UserResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
@@ -283,14 +303,19 @@ export class UsersController {
       'Permanently deletes a user from the system. Only ADMIN. This action cannot be undone.',
   })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'User deleted',
     schema: {
-      example: {
-        success: true,
-        data: { message: 'User deleted successfully' },
-      },
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
     },
   })
   remove(@Param('id') id: string) {

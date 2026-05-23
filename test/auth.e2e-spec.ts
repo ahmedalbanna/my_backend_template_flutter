@@ -45,6 +45,7 @@ describe('AuthController (e2e)', () => {
     );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new TransformInterceptor());
+    app.setGlobalPrefix('api/v1', { exclude: ['docs', 'docs-json'] });
 
     await app.init();
 
@@ -59,10 +60,10 @@ describe('AuthController (e2e)', () => {
   });
 
   /* ─────────────── Register ─────────────── */
-  describe('/auth/register (POST)', () => {
+  describe('/api/v1/auth/register (POST)', () => {
     it('should register a new user successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({
           email: testEmail,
           password: testPassword,
@@ -85,7 +86,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail if email already exists', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({ email: testEmail, password: testPassword });
 
       expect(response.status).toBe(400);
@@ -95,7 +96,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail if password is too short', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({ email: `short_${testEmail}`, password: '123' });
 
       expect(response.status).toBe(400);
@@ -104,10 +105,10 @@ describe('AuthController (e2e)', () => {
   });
 
   /* ─────────────── Login ─────────────── */
-  describe('/auth/login (POST)', () => {
+  describe('/api/v1/auth/login (POST)', () => {
     it('should login successfully with correct credentials', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({ email: testEmail, password: testPassword });
 
       expect(response.status).toBe(200);
@@ -121,7 +122,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail to login with incorrect password', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({ email: testEmail, password: 'wrongpassword' });
 
       expect(response.status).toBe(401);
@@ -130,7 +131,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail to login with non-existent email', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({ email: 'nobody@example.com', password: testPassword });
 
       expect(response.status).toBe(401);
@@ -139,10 +140,10 @@ describe('AuthController (e2e)', () => {
   });
 
   /* ─────────────── Refresh Tokens ─────────────── */
-  describe('/auth/refresh (POST)', () => {
+  describe('/api/v1/auth/refresh (POST)', () => {
     it('should refresh tokens successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/refresh')
+        .post('/api/v1/auth/refresh')
         .send({ refreshToken });
 
       expect(response.status).toBe(200);
@@ -155,7 +156,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with a bogus refresh token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/refresh')
+        .post('/api/v1/auth/refresh')
         .send({ refreshToken: 'totally-invalid-token' });
 
       expect(response.status).toBe(401);
@@ -164,10 +165,10 @@ describe('AuthController (e2e)', () => {
   });
 
   /* ─────────────── Logout ─────────────── */
-  describe('/auth/logout (POST)', () => {
+  describe('/api/v1/auth/logout (POST)', () => {
     it('should logout successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/logout')
+        .post('/api/v1/auth/logout')
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(response.status).toBe(200);
@@ -176,17 +177,19 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject logout without a token', async () => {
-      const response = await request(app.getHttpServer()).post('/auth/logout');
+      const response = await request(app.getHttpServer()).post(
+        '/api/v1/auth/logout',
+      );
 
       expect(response.status).toBe(401);
     });
   });
 
   /* ─────────────── Forgot / Reset Password ─────────────── */
-  describe('/auth/forgot-password (POST)', () => {
+  describe('/api/v1/auth/forgot-password (POST)', () => {
     it('should return same message whether email exists or not', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .send({ email: testEmail });
 
       expect(response.status).toBe(200);
@@ -198,10 +201,10 @@ describe('AuthController (e2e)', () => {
   });
 
   /* ─────────────── Phone OTP ─────────────── */
-  describe('/auth/phone/send-otp (POST)', () => {
+  describe('/api/v1/auth/phone/send-otp (POST)', () => {
     it('should send OTP for a new phone number', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
+        .post('/api/v1/auth/phone/send-otp')
         .send({ phone: testPhone });
 
       expect(response.status).toBe(200);
@@ -215,7 +218,7 @@ describe('AuthController (e2e)', () => {
 
     it('should send OTP again for an existing phone number', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
+        .post('/api/v1/auth/phone/send-otp')
         .send({ phone: testPhone });
 
       expect(response.status).toBe(200);
@@ -226,7 +229,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with invalid phone format', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
+        .post('/api/v1/auth/phone/send-otp')
         .send({ phone: '01234567890' });
 
       expect(response.status).toBe(400);
@@ -235,14 +238,14 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with empty phone', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
+        .post('/api/v1/auth/phone/send-otp')
         .send({ phone: '' });
 
       expect(response.status).toBe(400);
     });
   });
 
-  describe('/auth/phone/verify-otp (POST)', () => {
+  describe('/api/v1/auth/phone/verify-otp (POST)', () => {
     // Create a user with a known OTP hash for deterministic verification testing
     let otpTestUserId: string;
     const otpTestPhone = `+2011${(Date.now() + 1).toString().slice(-9)}`;
@@ -262,7 +265,7 @@ describe('AuthController (e2e)', () => {
 
     it('should verify OTP and return tokens for a new registration', async () => {
       const verifyResponse = await request(app.getHttpServer())
-        .post('/auth/phone/verify-otp')
+        .post('/api/v1/auth/phone/verify-otp')
         .send({ phone: otpTestPhone, otp: knownOtp });
 
       expect(verifyResponse.status).toBe(200);
@@ -289,7 +292,7 @@ describe('AuthController (e2e)', () => {
       });
 
       const verifyResponse = await request(app.getHttpServer())
-        .post('/auth/phone/verify-otp')
+        .post('/api/v1/auth/phone/verify-otp')
         .send({ phone: otpTestPhone, otp: knownOtp });
 
       expect(verifyResponse.status).toBe(200);
@@ -299,7 +302,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with incorrect OTP', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/verify-otp')
+        .post('/api/v1/auth/phone/verify-otp')
         .send({ phone: otpTestPhone, otp: '000000' });
 
       expect(response.status).toBe(400);
@@ -308,7 +311,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with non-existent phone', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/verify-otp')
+        .post('/api/v1/auth/phone/verify-otp')
         .send({ phone: '+999999999999999', otp: '123456' });
 
       expect(response.status).toBe(404);
@@ -325,7 +328,7 @@ describe('AuthController (e2e)', () => {
       cleanupUserIds.push(noOtpUser.id);
 
       const response = await request(app.getHttpServer())
-        .post('/auth/phone/verify-otp')
+        .post('/api/v1/auth/phone/verify-otp')
         .send({ phone: freshPhone, otp: '123456' });
 
       expect(response.status).toBe(400);

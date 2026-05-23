@@ -31,6 +31,11 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new TransformInterceptor());
 
+  // Set global API version prefix — all routes are now under /api/v1/*
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['docs', 'docs-json'], // Keep Swagger at root /docs
+  });
+
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {

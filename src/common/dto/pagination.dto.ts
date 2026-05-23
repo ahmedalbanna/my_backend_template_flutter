@@ -55,14 +55,12 @@ export class PaginationQueryDto {
   sortOrder?: 'asc' | 'desc' = 'desc';
 }
 
+/**
+ * @deprecated Use `PaginationMetaDto` from `./paginated-response.dto` instead.
+ */
 export interface PaginationMeta {
   total: number;
   page: number;
   limit: number;
   totalPages: number;
-}
-
-export class PaginatedResponseDto<T> {
-  data!: T[];
-  meta!: PaginationMeta;
 }

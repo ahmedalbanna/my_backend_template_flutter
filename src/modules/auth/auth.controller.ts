@@ -10,8 +10,10 @@ import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiExtraModels,
+  ApiResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -21,11 +23,18 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import {
+  AuthTokensWithUserDto,
+  AuthTokensDto,
+  AuthUserResponseDto,
+} from './dto/auth-response.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Permission } from '../../common/permissions';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ApiSuccessResponse } from '../../common/dto/api-response.dto';
+import { MessageResponseDto } from '../../common/dto/api-response.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -40,27 +49,23 @@ export class AuthController {
       'Creates a new user account and returns JWT access + refresh tokens. ' +
       'The email must be unique. Password must be at least 6 characters.',
   })
+  @ApiExtraModels(
+    ApiSuccessResponse,
+    AuthTokensWithUserDto,
+    AuthUserResponseDto,
+  )
   @ApiResponse({
     status: 201,
     description: 'Registration successful',
     schema: {
-      example: {
-        success: true,
-        data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
-          user: {
-            id: 'cmpx0abc123def456',
-            email: 'user@example.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            role: 'USER',
-            isActive: true,
-            createdAt: '2026-05-23T12:00:00.000Z',
-            updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(AuthTokensWithUserDto) },
           },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
@@ -90,27 +95,23 @@ export class AuthController {
       'Validates email and password, returns JWT access + refresh tokens. ' +
       'Use the access token in the Authorize header for protected endpoints.',
   })
+  @ApiExtraModels(
+    ApiSuccessResponse,
+    AuthTokensWithUserDto,
+    AuthUserResponseDto,
+  )
   @ApiResponse({
     status: 200,
     description: 'Login successful',
     schema: {
-      example: {
-        success: true,
-        data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
-          user: {
-            id: 'cmpx0abc123def456',
-            email: 'user@example.com',
-            firstName: 'John',
-            lastName: 'Doe',
-            role: 'USER',
-            isActive: true,
-            createdAt: '2026-05-23T12:00:00.000Z',
-            updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(AuthTokensWithUserDto) },
           },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
@@ -136,17 +137,19 @@ export class AuthController {
       'Exchange a valid refresh token for a new access/refresh token pair. ' +
       'Refresh tokens expire after 7 days and can only be used once.',
   })
+  @ApiExtraModels(ApiSuccessResponse, AuthTokensDto)
   @ApiResponse({
     status: 200,
     description: 'Tokens refreshed successfully',
     schema: {
-      example: {
-        success: true,
-        data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(AuthTokensDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
@@ -170,21 +173,26 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @Permissions(Permission.AUTH_LOGOUT)
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Logout and invalidate the refresh token',
     description:
       'Invalidates the stored refresh token for the current user. ' +
       'The access token will continue to work until it expires naturally.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'Logged out successfully',
     schema: {
-      example: {
-        success: true,
-        data: { message: 'Logged out successfully' },
-      },
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
     },
   })
   @ApiResponse({
@@ -211,16 +219,19 @@ export class AuthController {
       'Sends a password reset token to the user email if it exists. ' +
       'Always returns the same response to prevent email enumeration.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'Reset email sent (or user not found — same response)',
     schema: {
-      example: {
-        success: true,
-        data: {
-          message: 'If the email exists, a reset link has been sent.',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
@@ -249,14 +260,19 @@ export class AuthController {
       'Resets the user password using the token received via forgot-password flow. ' +
       'Also invalidates all existing refresh tokens for the user.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'Password reset successfully',
     schema: {
-      example: {
-        success: true,
-        data: { message: 'Password reset successfully' },
-      },
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
     },
   })
   @ApiResponse({
@@ -300,16 +316,19 @@ export class AuthController {
       'If the phone does not exist, a new inactive user is created. ' +
       'In simulation mode, the OTP is returned directly in the response.',
   })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
   @ApiResponse({
     status: 200,
     description: 'OTP sent (simulated)',
     schema: {
-      example: {
-        success: true,
-        data: {
-          message: 'OTP sent successfully (simulated)',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
@@ -341,28 +360,23 @@ export class AuthController {
       'On success: activates the user (if first-time registration) and ' +
       'returns JWT access + refresh tokens.',
   })
+  @ApiExtraModels(
+    ApiSuccessResponse,
+    AuthTokensWithUserDto,
+    AuthUserResponseDto,
+  )
   @ApiResponse({
     status: 200,
     description: 'OTP verified — login/registration successful',
     schema: {
-      example: {
-        success: true,
-        data: {
-          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
-          user: {
-            id: 'cmpx0abc123def456',
-            phone: '+201234567890',
-            email: null,
-            firstName: null,
-            lastName: null,
-            role: 'USER',
-            isActive: true,
-            createdAt: '2026-05-23T12:00:00.000Z',
-            updatedAt: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(AuthTokensWithUserDto) },
           },
         },
-      },
+      ],
     },
   })
   @ApiResponse({

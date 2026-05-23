@@ -45,6 +45,8 @@ npm run start:dev
 
 Server runs at **http://localhost:3000** — Swagger docs at **http://localhost:3000/docs**
 
+> **API Versioning**: All API routes are prefixed with `/api/v1/`. For example: `GET /api/v1/users/me`, `POST /api/v1/auth/login`.
+
 > **Default seed admin**: `admin@example.com` / `admin123`
 
 ---
@@ -113,11 +115,11 @@ Each feature module follows the pattern:
 
 | Step | Endpoint | Description |
 |------|----------|-------------|
-| 1 | `POST /auth/register` | Create account with email + password |
-| 2 | `POST /auth/login` | Get JWT access + refresh tokens |
+| 1 | `POST /api/v1/auth/register` | Create account with email + password |
+| 2 | `POST /api/v1/auth/login` | Get JWT access + refresh tokens |
 | 3 | Use `Authorization: Bearer <accessToken>` header for protected endpoints |
-| 4 | `POST /auth/refresh` | Get new token pair when access token expires |
-| 5 | `POST /auth/logout` | Invalidate the refresh token |
+| 4 | `POST /api/v1/auth/refresh` | Get new token pair when access token expires |
+| 5 | `POST /api/v1/auth/logout` | Invalidate the refresh token |
 
 ### Phone OTP Flow
 
@@ -125,8 +127,8 @@ The OTP is **simulated** — the code is returned in the response for testing.
 
 | Step | Endpoint | Description |
 |------|----------|-------------|
-| 1 | `POST /auth/phone/send-otp` | Send phone → receive `{ otp: "123456" }` (6 digits) |
-| 2 | `POST /auth/phone/verify-otp` | Send phone + otp → receive JWT tokens |
+| 1 | `POST /api/v1/auth/phone/send-otp` | Send phone → receive `{ otp: "123456" }` (6 digits) |
+| 2 | `POST /api/v1/auth/phone/verify-otp` | Send phone + otp → receive JWT tokens |
 
 - Phone format: international (`+201234567890`)
 - OTP expires after 5 minutes
@@ -137,8 +139,8 @@ The OTP is **simulated** — the code is returned in the response for testing.
 
 | Step | Endpoint | Description |
 |------|----------|-------------|
-| 1 | `POST /auth/forgot-password` | Request reset (returns same message whether email exists or not) |
-| 2 | `POST /auth/reset-password` | Submit token + new password |
+| 1 | `POST /api/v1/auth/forgot-password` | Request reset (returns same message whether email exists or not) |
+| 2 | `POST /api/v1/auth/reset-password` | Submit token + new password |
 
 ### JWT Token Payload
 
@@ -239,37 +241,37 @@ Copy `.env.example` to `.env` and update values.
 
 ## API Endpoints
 
-### Auth (`/auth`)
+### Auth (`/api/v1/auth`)
 
 | Method | Path | Auth | Permission | Description |
 |--------|------|:----:|:----------:|-------------|
-| POST | `/auth/register` | Public | — | Register with email + password |
-| POST | `/auth/login` | Public | — | Login with email + password |
-| POST | `/auth/refresh` | Public | — | Refresh JWT tokens |
-| POST | `/auth/logout` | JWT | `auth:logout` | Invalidate refresh token |
-| POST | `/auth/forgot-password` | Public | — | Request password reset |
-| POST | `/auth/reset-password` | Public | — | Reset password with token |
-| POST | `/auth/phone/send-otp` | Public | — | Send OTP to phone (simulated) |
-| POST | `/auth/phone/verify-otp` | Public | — | Verify OTP and get tokens |
+| POST | `/api/v1/auth/register` | Public | — | Register with email + password |
+| POST | `/api/v1/auth/login` | Public | — | Login with email + password |
+| POST | `/api/v1/auth/refresh` | Public | — | Refresh JWT tokens |
+| POST | `/api/v1/auth/logout` | JWT | `auth:logout` | Invalidate refresh token |
+| POST | `/api/v1/auth/forgot-password` | Public | — | Request password reset |
+| POST | `/api/v1/auth/reset-password` | Public | — | Reset password with token |
+| POST | `/api/v1/auth/phone/send-otp` | Public | — | Send OTP to phone (simulated) |
+| POST | `/api/v1/auth/phone/verify-otp` | Public | — | Verify OTP and get tokens |
 
-### Users (`/users`)
+### Users (`/api/v1/users`)
 
 | Method | Path | Auth | Permission | Description |
 |--------|------|:----:|:----------:|-------------|
-| GET | `/users/me` | JWT | `users:read` | Get own profile |
-| PUT | `/users/me` | JWT | `users:write` | Update own profile |
-| DELETE | `/users/me` | JWT | `users:delete` | Delete own account |
-| PATCH | `/users/fcm-token` | JWT | `users:write` | Update FCM push token |
-| GET | `/users` | Admin | `users:read` | List all users (paginated) |
-| GET | `/users/:id` | Admin | `users:read` | Get user by ID |
-| PUT | `/users/:id` | Admin | `users:manage` | Update any user (including role) |
-| DELETE | `/users/:id` | Admin | `users:delete` | Delete any user |
+| GET | `/api/v1/users/me` | JWT | `users:read` | Get own profile |
+| PUT | `/api/v1/users/me` | JWT | `users:write` | Update own profile |
+| DELETE | `/api/v1/users/me` | JWT | `users:delete` | Delete own account |
+| PATCH | `/api/v1/users/fcm-token` | JWT | `users:write` | Update FCM push token |
+| GET | `/api/v1/users` | Admin | `users:read` | List all users (paginated) |
+| GET | `/api/v1/users/:id` | Admin | `users:read` | Get user by ID |
+| PUT | `/api/v1/users/:id` | Admin | `users:manage` | Update any user (including role) |
+| DELETE | `/api/v1/users/:id` | Admin | `users:delete` | Delete any user |
 
-### Health (`/health`)
+### Health (`/api/v1/health`)
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/health` | Public | Database connectivity check (200=up, 503=down) |
+| GET | `/api/v1/health` | Public | Database connectivity check (200=up, 503=down) |
 
 ---
 

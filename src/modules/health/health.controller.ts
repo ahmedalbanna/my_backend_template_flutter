@@ -1,7 +1,15 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiExtraModels,
+  ApiResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
+import { ApiSuccessResponse } from '../../common/dto/api-response.dto';
+import { HealthResponseDto } from './dto/health-response.dto';
 
 @ApiTags('Health')
 @Controller('health')
@@ -17,18 +25,19 @@ export class HealthController {
       'Returns 200 if the database is reachable, 503 if it is down. ' +
       'Use this endpoint for monitoring and orchestration health probes.',
   })
+  @ApiExtraModels(ApiSuccessResponse, HealthResponseDto)
   @ApiResponse({
     status: 200,
     description: 'All systems operational',
     schema: {
-      example: {
-        success: true,
-        data: {
-          status: 'ok',
-          database: 'up',
-          timestamp: '2026-05-23T12:00:00.000Z',
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(HealthResponseDto) },
+          },
         },
-      },
+      ],
     },
   })
   @ApiResponse({
