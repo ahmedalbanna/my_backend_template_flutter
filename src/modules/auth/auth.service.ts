@@ -27,8 +27,11 @@ export class AuthService {
 
   private generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
-    const expiresIn = (this.configService.get<string>('jwt.expiresIn') || '15m') as `${number}h` | `${number}m` | `${number}s`;
-    const refreshExpiresIn = (this.configService.get<string>('jwt.refreshExpiresIn') || '7d') as `${number}h` | `${number}m` | `${number}s` | `${number}d`;
+    const expiresIn = (this.configService.get<string>('jwt.expiresIn') ||
+      '15m') as `${number}h` | `${number}m` | `${number}s`;
+    const refreshExpiresIn = (this.configService.get<string>(
+      'jwt.refreshExpiresIn',
+    ) || '7d') as `${number}h` | `${number}m` | `${number}s` | `${number}d`;
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.secret'),
@@ -48,7 +51,8 @@ export class AuthService {
   async validateUser(email: string, pass: string) {
     const user = await this.usersService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
+      const { password: _password, ...result } = user;
+      void _password;
       return result;
     }
     return null;
@@ -70,7 +74,12 @@ export class AuthService {
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
-    const { password, refreshToken, ...result } = user;
+    const {
+      password: _password,
+      refreshToken: _refreshToken,
+      ...result
+    } = user;
+    void [_password, _refreshToken];
     return { ...tokens, user: result };
   }
 
@@ -134,7 +143,11 @@ export class AuthService {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000);
 
-    await this.authRepository.setPasswordResetToken(user.id, resetToken, expires);
+    await this.authRepository.setPasswordResetToken(
+      user.id,
+      resetToken,
+      expires,
+    );
 
     return { message: 'If the email exists, a reset link has been sent.' };
   }

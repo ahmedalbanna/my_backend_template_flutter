@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
-import { NotFoundException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -100,7 +99,9 @@ describe('UsersService', () => {
       const result = await service.update('1', { firstName: 'Updated' });
       expect(result.password).toBeUndefined();
       expect(result.refreshToken).toBeUndefined();
-      expect(repository.update).toHaveBeenCalledWith('1', { firstName: 'Updated' });
+      expect(repository.update).toHaveBeenCalledWith('1', {
+        firstName: 'Updated',
+      });
     });
   });
 
@@ -117,7 +118,9 @@ describe('UsersService', () => {
     it('should update FCM token', async () => {
       repository.update!.mockResolvedValue(mockUser);
       await service.updateFcmToken('1', 'new-fcm-token');
-      expect(repository.update).toHaveBeenCalledWith('1', { fcmToken: 'new-fcm-token' });
+      expect(repository.update).toHaveBeenCalledWith('1', {
+        fcmToken: 'new-fcm-token',
+      });
     });
   });
 });

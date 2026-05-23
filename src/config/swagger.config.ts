@@ -29,7 +29,10 @@ All responses follow a unified structure:
     },
     'JWT-auth',
   )
-  .addTag('Auth', 'Authentication endpoints – register, login, token refresh, password management')
+  .addTag(
+    'Auth',
+    'Authentication endpoints – register, login, token refresh, password management',
+  )
   .addTag('Users', 'User management – CRUD operations (Admin protected)')
   .addTag('Health', 'System health checks – database')
   .build();

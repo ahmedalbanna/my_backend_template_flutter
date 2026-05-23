@@ -33,7 +33,10 @@ export class AuthController {
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: 201, description: 'User registered successfully with tokens' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully with tokens',
+  })
   @ApiResponse({ status: 400, description: 'Email already in use' })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -45,7 +48,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authenticate user and receive JWT tokens' })
-  @ApiResponse({ status: 200, description: 'Login successful with access & refresh tokens' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful with access & refresh tokens',
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
@@ -57,7 +63,10 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using a valid refresh token' })
-  @ApiResponse({ status: 200, description: 'New access & refresh tokens issued' })
+  @ApiResponse({
+    status: 200,
+    description: 'New access & refresh tokens issued',
+  })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   refreshTokens(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto);
@@ -81,7 +90,10 @@ export class AuthController {
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request a password reset email' })
-  @ApiResponse({ status: 200, description: 'Reset email sent if account exists' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset email sent if account exists',
+  })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
@@ -91,9 +103,29 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reset password using the token received via email' })
-  @ApiResponse({ status: 200, description: 'Password reset successfully', schema: { example: { success: true, data: { message: 'Password reset successfully' } } } })
-  @ApiResponse({ status: 404, description: 'Invalid or expired token', schema: { example: { success: false, error: { statusCode: 404, message: 'Invalid or expired reset token' } } } })
+  @ApiOperation({
+    summary: 'Reset password using the token received via email',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successfully',
+    schema: {
+      example: {
+        success: true,
+        data: { message: 'Password reset successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Invalid or expired token',
+    schema: {
+      example: {
+        success: false,
+        error: { statusCode: 404, message: 'Invalid or expired reset token' },
+      },
+    },
+  })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }

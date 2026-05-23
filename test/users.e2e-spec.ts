@@ -25,7 +25,13 @@ describe('UsersController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new TransformInterceptor());
     await app.init();
@@ -34,21 +40,36 @@ describe('UsersController (e2e)', () => {
 
     const adminRes = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: adminEmail, password: 'password123', firstName: 'Admin', lastName: 'User' });
+      .send({
+        email: adminEmail,
+        password: 'password123',
+        firstName: 'Admin',
+        lastName: 'User',
+      });
     adminToken = adminRes.body.data.accessToken;
     adminId = adminRes.body.data.user.id;
 
-    await prisma.user.update({ where: { id: adminId }, data: { role: 'ADMIN' } });
+    await prisma.user.update({
+      where: { id: adminId },
+      data: { role: 'ADMIN' },
+    });
 
     const userRes = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: userEmail, password: 'password123', firstName: 'Regular', lastName: 'User' });
+      .send({
+        email: userEmail,
+        password: 'password123',
+        firstName: 'Regular',
+        lastName: 'User',
+      });
     userToken = userRes.body.data.accessToken;
   });
 
   afterAll(async () => {
     if (adminId) {
-      await prisma.user.deleteMany({ where: { email: { in: [adminEmail, userEmail] } } });
+      await prisma.user.deleteMany({
+        where: { email: { in: [adminEmail, userEmail] } },
+      });
     }
     await app.close();
   });

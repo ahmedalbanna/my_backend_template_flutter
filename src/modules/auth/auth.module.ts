@@ -18,7 +18,10 @@ import { AuthRepository } from './auth.repository';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('jwt.secret'),
         signOptions: {
-          expiresIn: (configService.get<string>('jwt.expiresIn') || '15m') as `${number}h` | `${number}m` | `${number}s`,
+          expiresIn: (configService.get<string>('jwt.expiresIn') || '15m') as
+            | `${number}h`
+            | `${number}m`
+            | `${number}s`,
         },
       }),
     }),

@@ -56,7 +56,10 @@ describe('AuthService', () => {
       usersService.findByEmail!.mockResolvedValueOnce({ id: '1' } as any);
 
       await expect(
-        service.register({ email: 'test@example.com', password: 'password123' }),
+        service.register({
+          email: 'test@example.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -97,7 +100,9 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if password does not match', async () => {
-      usersService.findByEmail!.mockResolvedValueOnce({ password: 'hashedpassword' } as any);
+      usersService.findByEmail!.mockResolvedValueOnce({
+        password: 'hashedpassword',
+      } as any);
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
 
       await expect(
@@ -117,10 +122,16 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
       (bcrypt.hash as jest.Mock).mockResolvedValueOnce('hashedrefresh');
 
-      const result = await service.login({ email: 'test@example.com', password: 'password123' });
+      const result = await service.login({
+        email: 'test@example.com',
+        password: 'password123',
+      });
 
       expect(jwtService.sign).toHaveBeenCalledTimes(2);
-      expect(authRepository.updateRefreshToken).toHaveBeenCalledWith('1', 'hashedrefresh');
+      expect(authRepository.updateRefreshToken).toHaveBeenCalledWith(
+        '1',
+        'hashedrefresh',
+      );
       expect(result.accessToken).toBe('mocked_token');
       expect(result.refreshToken).toBe('mocked_token');
       expect(result.user).toBeDefined();
