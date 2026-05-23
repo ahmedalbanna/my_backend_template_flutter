@@ -15,7 +15,11 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { AuthRepository } from './auth.repository';
+
+const OTP_EXPIRY_MINUTES = 5;
 
 @Injectable()
 export class AuthService {
@@ -26,8 +30,10 @@ export class AuthService {
     private authRepository: AuthRepository,
   ) {}
 
-  private generateTokens(userId: string, email: string) {
-    const payload = { sub: userId, email };
+  private generateTokens(userId: string, email?: string, phone?: string) {
+    const payload: Record<string, unknown> = { sub: userId };
+    if (email) payload.email = email;
+    if (phone) payload.phone = phone;
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.secret'),
@@ -54,7 +60,7 @@ export class AuthService {
 
   async validateUser(email: string, pass: string) {
     const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(pass, user.password))) {
+    if (user?.password && (await bcrypt.compare(pass, user.password))) {
       const { password: _password, ...result } = user;
       void _password;
       return result;
@@ -74,7 +80,7 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const tokens = this.generateTokens(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email ?? undefined);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
@@ -96,7 +102,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is deactivated');
     }
 
-    const tokens = this.generateTokens(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email ?? undefined);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
@@ -126,7 +132,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token mismatch');
     }
 
-    const tokens = this.generateTokens(user.id, user.email);
+    const tokens = this.generateTokens(user.id, user.email ?? undefined);
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
@@ -167,5 +173,85 @@ export class AuthService {
     await this.authRepository.updateRefreshToken(user.id, null);
 
     return { message: 'Password reset successfully' };
+  }
+
+  private generateOtp(): { otp: string; hash: string } {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hash = crypto.createHash('sha256').update(otp).digest('hex');
+    return { otp, hash };
+  }
+
+  async sendOtp(dto: SendOtpDto): Promise<{ message: string; otp: string }> {
+    let user = await this.authRepository.findByPhone(dto.phone);
+
+    const { otp, hash } = this.generateOtp();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    if (user) {
+      await this.authRepository.setOtp(user.id, hash, expiresAt);
+    } else {
+      user = await this.authRepository.create({
+        phone: dto.phone,
+        otpHash: hash,
+        otpExpiresAt: expiresAt,
+      });
+    }
+
+    return {
+      message: 'OTP sent successfully (simulated)',
+      otp,
+    };
+  }
+
+  async verifyOtp(dto: VerifyOtpDto): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    user: Record<string, unknown>;
+  }> {
+    const user = await this.authRepository.findByPhone(dto.phone);
+    if (!user) {
+      throw new NotFoundException('No account found with this phone number');
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+      throw new BadRequestException('No OTP requested for this phone');
+    }
+
+    if (new Date() > user.otpExpiresAt) {
+      throw new BadRequestException('OTP has expired');
+    }
+
+    const hash = crypto.createHash('sha256').update(dto.otp).digest('hex');
+    if (hash !== user.otpHash) {
+      throw new BadRequestException('Invalid OTP code');
+    }
+
+    if (!user.isActive) {
+      await this.authRepository.activateUser(user.id);
+    }
+
+    await this.authRepository.clearOtp(user.id);
+
+    const tokens = this.generateTokens(
+      user.id,
+      user.email ?? undefined,
+      user.phone ?? undefined,
+    );
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
+
+    const userData: Record<string, unknown> = {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      isActive: true,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return { ...tokens, user: userData };
   }
 }

@@ -18,6 +18,8 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -279,5 +281,111 @@ export class AuthController {
   })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('phone/send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send OTP to phone for registration or login',
+    description:
+      'Generates a 6-digit OTP and stores it hashed in the database. ' +
+      'If the phone does not exist, a new inactive user is created. ' +
+      'In simulation mode, the OTP is returned directly in the response.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent (simulated)',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          message: 'OTP sent successfully (simulated)',
+          otp: '123456',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid phone format',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 400,
+          message: [
+            'Phone must be in international format (e.g. +201234567890)',
+          ],
+        },
+      },
+    },
+  })
+  sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendOtp(dto);
+  }
+
+  @Public()
+  @Post('phone/verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify OTP and receive JWT tokens',
+    description:
+      'Validates the 6-digit OTP for the given phone number. ' +
+      'On success: activates the user (if first-time registration) and ' +
+      'returns JWT access + refresh tokens.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified — login/registration successful',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
+          user: {
+            id: 'cmpx0abc123def456',
+            phone: '+201234567890',
+            email: null,
+            firstName: null,
+            lastName: null,
+            role: 'USER',
+            isActive: true,
+            createdAt: '2026-05-23T12:00:00.000Z',
+            updatedAt: '2026-05-23T12:00:00.000Z',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid OTP or OTP expired',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 400,
+          message: 'OTP has expired',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Phone not found',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 404,
+          message: 'No account found with this phone number',
+        },
+      },
+    },
+  })
+  verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto);
   }
 }

@@ -8,14 +8,17 @@ datasource db {
 
 model User {
   id                   String   @id @default(cuid())
-  email                String   @unique
-  password             String
+  email                String?  @unique
+  phone                String?  @unique
+  password             String?
   firstName            String?
   lastName             String?
   role                 String   @default("USER")
   isActive             Boolean  @default(true)
   refreshToken         String?
   fcmToken             String?
+  otpHash              String?
+  otpExpiresAt         DateTime?
   passwordResetToken   String?
   passwordResetExpires DateTime?
   createdAt            DateTime @default(now())
