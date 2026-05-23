@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -28,83 +27,219 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // ─── Register ─────────────────────────────────────────────────────────────
-
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user account' })
+  @ApiOperation({
+    summary: 'Register a new user account',
+    description:
+      'Creates a new user account and returns JWT access + refresh tokens. ' +
+      'The email must be unique. Password must be at least 6 characters.',
+  })
   @ApiResponse({
     status: 201,
-    description: 'User registered successfully with tokens',
+    description: 'Registration successful',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
+          user: {
+            id: 'cmpx0abc123def456',
+            email: 'user@example.com',
+            firstName: 'John',
+            lastName: 'Doe',
+            role: 'USER',
+            isActive: true,
+            createdAt: '2026-05-23T12:00:00.000Z',
+            updatedAt: '2026-05-23T12:00:00.000Z',
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ status: 400, description: 'Email already in use' })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed or email already in use',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 400,
+          message: 'Email already in use',
+        },
+      },
+    },
+  })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  // ─── Login ────────────────────────────────────────────────────────────────
-
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authenticate user and receive JWT tokens' })
+  @ApiOperation({
+    summary: 'Authenticate user and receive JWT tokens',
+    description:
+      'Validates email and password, returns JWT access + refresh tokens. ' +
+      'Use the access token in the Authorize header for protected endpoints.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Login successful with access & refresh tokens',
+    description: 'Login successful',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
+          user: {
+            id: 'cmpx0abc123def456',
+            email: 'user@example.com',
+            firstName: 'John',
+            lastName: 'Doe',
+            role: 'USER',
+            isActive: true,
+            createdAt: '2026-05-23T12:00:00.000Z',
+            updatedAt: '2026-05-23T12:00:00.000Z',
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid email or password, or account deactivated',
+    schema: {
+      example: {
+        success: false,
+        error: { statusCode: 401, message: 'Invalid credentials' },
+      },
+    },
+  })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  // ─── Refresh Token ────────────────────────────────────────────────────────
-
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token using a valid refresh token' })
+  @ApiOperation({
+    summary: 'Refresh access and refresh tokens',
+    description:
+      'Exchange a valid refresh token for a new access/refresh token pair. ' +
+      'Refresh tokens expire after 7 days and can only be used once.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'New access & refresh tokens issued',
+    description: 'Tokens refreshed successfully',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIs...',
+          refreshToken: 'eyJhbGciOiJIUzI1NiIs...',
+        },
+      },
+    },
   })
-  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired refresh token',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 401,
+          message: 'Invalid or expired refresh token',
+        },
+      },
+    },
+  })
   refreshTokens(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto);
   }
-
-  // ─── Logout ───────────────────────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout and invalidate the refresh token' })
-  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  @ApiOperation({
+    summary: 'Logout and invalidate the refresh token',
+    description:
+      'Invalidates the stored refresh token for the current user. ' +
+      'The access token will continue to work until it expires naturally.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out successfully',
+    schema: {
+      example: {
+        success: true,
+        data: { message: 'Logged out successfully' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Authentication required',
+    schema: {
+      example: {
+        success: false,
+        error: { statusCode: 401, message: 'Authentication required' },
+      },
+    },
+  })
   logout(@CurrentUser() user: { userId: string }) {
     return this.authService.logout(user.userId);
   }
 
-  // ─── Forgot Password ──────────────────────────────────────────────────────
-
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Request a password reset email' })
+  @ApiOperation({
+    summary: 'Request a password reset token',
+    description:
+      'Sends a password reset token to the user email if it exists. ' +
+      'Always returns the same response to prevent email enumeration.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Reset email sent if account exists',
+    description: 'Reset email sent (or user not found — same response)',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          message: 'If the email exists, a reset link has been sent.',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid email format',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 400,
+          message: ['email must be an email'],
+        },
+      },
+    },
   })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
 
-  // ─── Reset Password ───────────────────────────────────────────────────────
-
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Reset password using the token received via email',
+    summary: 'Reset password using a reset token',
+    description:
+      'Resets the user password using the token received via forgot-password flow. ' +
+      'Also invalidates all existing refresh tokens for the user.',
   })
   @ApiResponse({
     status: 200,
@@ -118,11 +253,27 @@ export class AuthController {
   })
   @ApiResponse({
     status: 404,
-    description: 'Invalid or expired token',
+    description: 'Invalid or expired reset token',
     schema: {
       example: {
         success: false,
-        error: { statusCode: 404, message: 'Invalid or expired reset token' },
+        error: {
+          statusCode: 404,
+          message: 'Invalid or expired reset token',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed (token required, min length)',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 400,
+          message: ['newPassword must be longer than or equal to 6 characters'],
+        },
       },
     },
   })

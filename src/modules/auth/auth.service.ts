@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import ms from 'ms';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -27,19 +28,22 @@ export class AuthService {
 
   private generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
-    const expiresIn = (this.configService.get<string>('jwt.expiresIn') ||
-      '15m') as `${number}h` | `${number}m` | `${number}s`;
-    const refreshExpiresIn = (this.configService.get<string>(
-      'jwt.refreshExpiresIn',
-    ) || '7d') as `${number}h` | `${number}m` | `${number}s` | `${number}d`;
 
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.secret'),
-      expiresIn,
+      expiresIn:
+        ms(
+          (this.configService.get<string>('jwt.expiresIn') ||
+            '15m') as unknown as ms.StringValue,
+        ) / 1000,
     });
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.refreshSecret'),
-      expiresIn: refreshExpiresIn,
+      expiresIn:
+        ms(
+          (this.configService.get<string>('jwt.refreshExpiresIn') ||
+            '7d') as unknown as ms.StringValue,
+        ) / 1000,
     });
     return { accessToken, refreshToken };
   }

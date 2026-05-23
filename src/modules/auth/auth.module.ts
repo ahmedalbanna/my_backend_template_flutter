@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthRepository } from './auth.repository';
+import ms from 'ms';
 
 @Module({
   imports: [
@@ -18,10 +19,11 @@ import { AuthRepository } from './auth.repository';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('jwt.secret'),
         signOptions: {
-          expiresIn: (configService.get<string>('jwt.expiresIn') || '15m') as
-            | `${number}h`
-            | `${number}m`
-            | `${number}s`,
+          expiresIn:
+            ms(
+              (configService.get<string>('jwt.expiresIn') ||
+                '15m') as unknown as ms.StringValue,
+            ) / 1000,
         },
       }),
     }),
