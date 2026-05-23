@@ -9,6 +9,7 @@ describe('UsersService', () => {
   const mockUser = {
     id: '1',
     email: 'test@example.com',
+    phone: null,
     password: 'hashed',
     firstName: 'Test',
     lastName: 'User',
@@ -16,6 +17,8 @@ describe('UsersService', () => {
     isActive: true,
     refreshToken: 'rtoken',
     fcmToken: null,
+    otpHash: null,
+    otpExpiresAt: null,
     passwordResetToken: null,
     passwordResetExpires: null,
     createdAt: new Date(),
@@ -26,6 +29,7 @@ describe('UsersService', () => {
     repository = {
       create: jest.fn(),
       findByEmail: jest.fn(),
+      findByPhone: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
       update: jest.fn(),
@@ -42,6 +46,7 @@ describe('UsersService', () => {
     service = module.get<UsersService>(UsersService);
   });
 
+  /* ─────────────── create ─────────────── */
   describe('create', () => {
     it('should create a user and return it', async () => {
       repository.create!.mockResolvedValue(mockUser);
@@ -54,6 +59,7 @@ describe('UsersService', () => {
     });
   });
 
+  /* ─────────────── findByEmail ─────────────── */
   describe('findByEmail', () => {
     it('should return a user if found', async () => {
       repository.findByEmail!.mockResolvedValue(mockUser);
@@ -68,6 +74,22 @@ describe('UsersService', () => {
     });
   });
 
+  /* ─────────────── findByPhone ─────────────── */
+  describe('findByPhone', () => {
+    it('should return a user if found by phone', async () => {
+      repository.findByPhone!.mockResolvedValue(mockUser);
+      const result = await service.findByPhone('+201234567890');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should return null if phone not found', async () => {
+      repository.findByPhone!.mockResolvedValue(null);
+      const result = await service.findByPhone('+999999999999');
+      expect(result).toBeNull();
+    });
+  });
+
+  /* ─────────────── findById ─────────────── */
   describe('findById', () => {
     it('should return a user if found', async () => {
       repository.findById!.mockResolvedValue(mockUser);
@@ -82,6 +104,7 @@ describe('UsersService', () => {
     });
   });
 
+  /* ─────────────── findAll ─────────────── */
   describe('findAll', () => {
     it('should return paginated users without sensitive fields', async () => {
       repository.findAll!.mockResolvedValue([[mockUser], 1]);
@@ -91,8 +114,34 @@ describe('UsersService', () => {
       expect(result.data[0].refreshToken).toBeUndefined();
       expect(result.data[0].email).toBe('test@example.com');
     });
+
+    it('should apply sorting defaults', async () => {
+      repository.findAll!.mockResolvedValue([[mockUser], 1]);
+      await service.findAll({});
+      expect(repository.findAll).toHaveBeenCalledWith({
+        skip: 0,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('should apply custom pagination and sorting', async () => {
+      repository.findAll!.mockResolvedValue([[mockUser], 50]);
+      await service.findAll({
+        page: 3,
+        limit: 20,
+        sortBy: 'email',
+        sortOrder: 'asc',
+      });
+      expect(repository.findAll).toHaveBeenCalledWith({
+        skip: 40,
+        take: 20,
+        orderBy: { email: 'asc' },
+      });
+    });
   });
 
+  /* ─────────────── update ─────────────── */
   describe('update', () => {
     it('should update and return user without sensitive fields', async () => {
       repository.update!.mockResolvedValue(mockUser);
@@ -105,6 +154,7 @@ describe('UsersService', () => {
     });
   });
 
+  /* ─────────────── remove ─────────────── */
   describe('remove', () => {
     it('should delete user and return confirmation', async () => {
       repository.remove!.mockResolvedValue(mockUser);
@@ -114,6 +164,7 @@ describe('UsersService', () => {
     });
   });
 
+  /* ─────────────── updateFcmToken ─────────────── */
   describe('updateFcmToken', () => {
     it('should update FCM token', async () => {
       repository.update!.mockResolvedValue(mockUser);
