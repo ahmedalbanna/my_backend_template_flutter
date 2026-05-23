@@ -1,104 +1,198 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Backend Starter Template
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-ready NestJS backend template with **JWT authentication**, **RBAC**, **SQLite**, and **CRUD patterns**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Built for Flutter/Laravel/React developers who need a clean, modular, and secure REST API backend.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
 
-## 📚 Living Documentation
-This project uses a "Living Documentation" strategy. The source of truth for architecture, API contracts, and database schema is located in the `docs/` folder.
+| Feature | Description |
+|---------|-------------|
+| **Authentication** | Register, login, JWT access + refresh tokens, logout |
+| **Password Reset** | Token-based forgot/reset password flow |
+| **Role-Based Access** | `USER` and `ADMIN` roles with `RolesGuard` |
+| **User Management** | Profile CRUD, admin user list, FCM token storage |
+| **Modular Structure** | Feature-based modules for easy extension |
+| **Health Check** | Database connectivity endpoint |
+| **SQLite Database** | Zero-config local database (Prisma ORM) |
+| **API Documentation** | Swagger UI at `/docs` |
+| **Unified Responses** | `{ success, data }` / `{ success, error }` format |
+| **Validation** | `class-validator` + `class-transformer` on all DTOs |
 
-- **[Browse Documentation](./docs/README.md)**
-- **Generate/Update Docs**: Run `npm run generate:docs` to update API contracts and directory structure.
+---
 
-## Project setup
+## Quick Start
 
 ```bash
-$ npm install
+# 1. Install dependencies
+npm install
+
+# 2. Create SQLite database and run migrations
+npx prisma migrate dev --name init
+
+# 3. (Optional) Seed with admin user
+npm run prisma:seed
+
+# 4. Start development server
+npm run start:dev
 ```
 
-## Compile and run the project
+Server runs at **http://localhost:3000** — Swagger docs at **http://localhost:3000/docs**
+
+> **Default seed admin**: `admin@example.com` / `admin123`
+
+---
+
+## Project Structure
+
+```
+src/
+├── main.ts                  # App bootstrap (pipes, filters, swagger, cors)
+├── app.module.ts            # Root module
+├── config/
+│   ├── configuration.ts     # Env vars + Joi validation
+│   └── swagger.config.ts    # Swagger UI setup
+├── common/
+│   ├── decorators/          # @Public(), @Roles(), @CurrentUser()
+│   ├── dto/                 # Shared DTOs (pagination)
+│   ├── filters/             # HttpExceptionFilter
+│   ├── guards/              # JwtAuthGuard, RolesGuard
+│   └── interceptors/        # TransformInterceptor
+├── modules/
+│   ├── auth/                # Authentication (JWT, register, login, refresh)
+│   ├── users/               # User CRUD (profile, admin)
+│   ├── products/            # Example CRUD module
+│   └── health/              # Database health check
+└── shared/
+    └── prisma/              # PrismaService (database client)
+```
+
+Each feature module follows the pattern:
+
+```
+<feature>/
+├── <feature>.module.ts
+├── <feature>.controller.ts
+├── <feature>.service.ts
+├── <feature>.repository.ts
+└── dto/
+    ├── create-<feature>.dto.ts
+    └── update-<feature>.dto.ts
+```
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `file:./dev.db` | SQLite database file path |
+| `PORT` | `3000` | Server port |
+| `NODE_ENV` | `development` | Environment |
+| `JWT_SECRET` | — | JWT signing secret (min 16 chars) |
+| `JWT_EXPIRES_IN` | `15m` | Access token lifetime |
+| `JWT_REFRESH_SECRET` | — | Refresh token secret (min 16 chars) |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` | Refresh token lifetime |
+
+Copy `.env.example` to `.env` and update values.
+
+---
+
+## API Endpoints
+
+### Auth (`/auth`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/register` | Public | Register new user |
+| POST | `/auth/login` | Public | Login |
+| POST | `/auth/refresh` | Public | Refresh tokens |
+| POST | `/auth/logout` | JWT | Invalidate refresh token |
+| POST | `/auth/forgot-password` | Public | Request password reset |
+| POST | `/auth/reset-password` | Public | Reset password with token |
+
+### Users (`/users`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/users/me` | JWT | Get profile |
+| PUT | `/users/me` | JWT | Update profile |
+| DELETE | `/users/me` | JWT | Delete account |
+| PATCH | `/users/fcm-token` | JWT | Update FCM token |
+| GET | `/users` | Admin | List all users |
+| GET | `/users/:id` | Admin | Get user by ID |
+| PUT | `/users/:id` | Admin | Update any user |
+| DELETE | `/users/:id` | Admin | Delete any user |
+
+### Products (`/products`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+### Health (`/health`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | Public | Database connectivity check |
+
+---
+
+## Scripts
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run start:dev     # Watch mode development
+npm run build         # Compile to dist/
+npm run test          # Unit tests
+npm run test:e2e      # End-to-end tests
+npm run lint          # Lint + fix
+npm run prisma:studio # Prisma Studio (DB GUI)
+npm run prisma:migrate # Create new migration
+npm run prisma:seed   # Seed admin user
 ```
 
-## Run tests
+---
+
+## Adding a New Feature Module
 
 ```bash
-# unit tests
-$ npm run test
+# 1. Generate scaffolding
+nest generate resource modules/<name>
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# 2. Create DTOs with class-validator decorators
+# 3. Create <name>.repository.ts for Prisma operations
+# 4. Register module in app.module.ts
+# 5. Add Swagger decorators to controller and DTOs
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Docker
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Build and run
+docker compose up -d
+
+# The API will be at http://localhost:3000
+# SQLite database is persisted via a Docker volume
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Response Format
 
-Check out a few resources that may come in handy when working with NestJS:
+**Success:**
+```json
+{ "success": true, "data": { ... } }
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+**Error:**
+```json
+{ "success": false, "error": { "statusCode": 400, "message": "..." } }
+```
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT

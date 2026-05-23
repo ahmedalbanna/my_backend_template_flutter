@@ -2,70 +2,24 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator markdown {
-  provider = "prisma-markdown"
-  output   = "../docs/database-schema.md"
-  title    = "Database Schema"
-}
-
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
 model User {
-  id                   String     @id @default(uuid())
-  email                String     @unique
+  id                   String   @id @default(cuid())
+  email                String   @unique
   password             String
   firstName            String?
   lastName             String?
-  role                 Role       @default(USER)
-  isActive             Boolean    @default(true)
+  role                 String   @default("USER")
+  isActive             Boolean  @default(true)
   refreshToken         String?
   fcmToken             String?
   passwordResetToken   String?
   passwordResetExpires DateTime?
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-  auditLogs            AuditLog[]
-  notifications        Notification[]
-}
-
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Float
-  imageUrl    String?
-  stock       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  action     String
-  entityName String
-  entityId   String
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
-  timestamp  DateTime @default(now())
-  metadata   Json?
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  title     String
-  body      String
-  data      Json?
-  isRead    Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 

@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: template_db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: template_db
-    ports:
-      - '5432:5432'
-    volumes:
-      - db_data:/var/lib/postgresql/data
-
   api:
     build:
       context: .
@@ -23,10 +10,13 @@ services:
     ports:
       - '3000:3000'
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/template_db?schema=public
+      DATABASE_URL: "file:/app/prisma/dev.db"
       PORT: 3000
-    depends_on:
-      - db
+      NODE_ENV: production
+      JWT_SECRET: "${JWT_SECRET:-change-me-to-a-long-random-string-min-16-chars}"
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET:-change-me-to-another-long-random-string-min-16-chars}"
+    volumes:
+      - sqlite_data:/app/prisma
 
 volumes:
-  db_data:
+  sqlite_data:

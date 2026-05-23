@@ -9,14 +9,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status = exception.getStatus();
     const exceptionResponse = exception.getResponse();
 
-    response
-      .status(status)
-      .json({
-        success: false,
-        error: {
-          statusCode: status,
-          message: typeof exceptionResponse === 'string' ? exceptionResponse : (exceptionResponse as any).message || exceptionResponse,
-        },
-      });
+    const message =
+      typeof exceptionResponse === 'string'
+        ? exceptionResponse
+        : typeof exceptionResponse === 'object' && exceptionResponse !== null
+          ? (exceptionResponse as Record<string, unknown>).message || exceptionResponse
+          : exceptionResponse;
+
+    response.status(status).json({
+      success: false,
+      error: {
+        statusCode: status,
+        message,
+      },
+    });
   }
 }

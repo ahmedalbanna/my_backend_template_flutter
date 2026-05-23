@@ -4,19 +4,15 @@ export const swaggerConfig = new DocumentBuilder()
   .setTitle('NestJS Backend Template API')
   .setDescription(
     `## Overview
-A production-ready NestJS backend template with JWT authentication, RBAC, file uploads, email service, and more.
-
+A NestJS backend starter template with JWT authentication, RBAC, and CRUD patterns.
+ 
 ## Authentication
 Use **Bearer Token** authentication. Obtain a token via \`POST /auth/login\`.
-
+ 
 ## Response Format
 All responses follow a unified structure:
 - **Success**: \`{ success: true, data: ... }\`
 - **Error**: \`{ success: false, error: { statusCode, message } }\`
-
-## Rate Limiting
-- Max **5 requests/second** per IP
-- Max **100 requests/minute** per IP
 `,
   )
   .setVersion('1.0.0')
@@ -35,6 +31,5 @@ All responses follow a unified structure:
   )
   .addTag('Auth', 'Authentication endpoints – register, login, token refresh, password management')
   .addTag('Users', 'User management – CRUD operations (Admin protected)')
-  .addTag('Upload', 'File upload endpoints – single & multiple file uploads')
-  .addTag('Health', 'System health checks – database, memory')
+  .addTag('Health', 'System health checks – database')
   .build();

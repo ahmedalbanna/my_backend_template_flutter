@@ -32,33 +32,27 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // ─── My Profile ────────────────────────────────────────────────────────────
-
   @Get('me')
   @ApiOperation({ summary: 'Get current authenticated user profile' })
-  @ApiResponse({ status: 200, description: 'User profile returned' })
   async getProfile(@CurrentUser() user: { userId: string }) {
     const found = await this.usersService.findById(user.userId);
     if (!found) throw new NotFoundException('User not found');
-    const { password, refreshToken, ...result } = found as any;
+    const { password, refreshToken, ...result } = found;
     return result;
   }
 
   @Put('me')
   @ApiOperation({ summary: 'Update current authenticated user profile' })
-  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   updateProfile(
     @CurrentUser() user: { userId: string },
     @Body() dto: UpdateUserDto,
   ) {
-    // Users cannot change their own role
     const { role, isActive, ...safeDto } = dto;
     return this.usersService.update(user.userId, safeDto);
   }
 
   @Patch('fcm-token')
   @ApiOperation({ summary: 'Update FCM token for current user' })
-  @ApiResponse({ status: 200, description: 'FCM token updated' })
   updateFcmToken(
     @CurrentUser() user: { userId: string },
     @Body('token') token: string,
@@ -68,25 +62,13 @@ export class UsersController {
 
   @Delete('me')
   @ApiOperation({ summary: 'Delete current authenticated user account' })
-  @ApiResponse({ status: 200, description: 'Account deleted successfully' })
   removeMe(@CurrentUser() user: { userId: string }) {
     return this.usersService.remove(user.userId);
   }
 
-  @Get('me/audit-logs')
-  @ApiOperation({ summary: 'Get audit logs for current user' })
-  @ApiResponse({ status: 200, description: 'Audit logs returned' })
-  getAuditLogs(@CurrentUser() user: { userId: string }) {
-    return this.usersService.getAuditLogs(user.userId);
-  }
-
-  // ─── Admin: All Users ──────────────────────────────────────────────────────
-
-
   @Get()
   @Roles('ADMIN')
   @ApiOperation({ summary: '[Admin] List all users with pagination' })
-  @ApiResponse({ status: 200, description: 'Paginated list of users' })
   findAll(@Query() query: PaginationQueryDto) {
     return this.usersService.findAll(query);
   }
@@ -95,20 +77,16 @@ export class UsersController {
   @Roles('ADMIN')
   @ApiOperation({ summary: '[Admin] Get a user by ID' })
   @ApiParam({ name: 'id', description: 'User UUID' })
-  @ApiResponse({ status: 200, description: 'User found' })
-  @ApiResponse({ status: 404, description: 'User not found' })
   async findById(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     if (!user) throw new NotFoundException('User not found');
-    const { password, refreshToken, ...result } = user as any;
+    const { password, refreshToken, ...result } = user;
     return result;
   }
 
   @Put(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: '[Admin] Update any user (including role & isActive)' })
-  @ApiParam({ name: 'id', description: 'User UUID' })
-  @ApiResponse({ status: 200, description: 'User updated successfully' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
@@ -116,8 +94,6 @@ export class UsersController {
   @Delete(':id')
   @Roles('ADMIN')
   @ApiOperation({ summary: '[Admin] Delete a user permanently' })
-  @ApiParam({ name: 'id', description: 'User UUID' })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

@@ -3,18 +3,16 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
-import { EmailService } from '../src/shared/email/email.service';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { App } from 'supertest/types';
 
-jest.setTimeout(30000); // Increase timeout to 30s for E2E
+jest.setTimeout(30000);
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
-  // We use a random email to avoid conflicts across test runs
   const testEmail = `test_${Date.now()}@example.com`;
   const testPassword = 'password123';
   let userId: string;
@@ -22,18 +20,10 @@ describe('AuthController (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideProvider(EmailService)
-      .useValue({
-        sendWelcome: jest.fn().mockResolvedValue(true),
-        sendPasswordReset: jest.fn().mockResolvedValue(true),
-        sendMail: jest.fn().mockResolvedValue(true),
-      })
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
 
-    // Replicate main.ts configuration
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -50,10 +40,8 @@ describe('AuthController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Clean up test user
     if (userId) {
-      await prisma.auditLog.deleteMany({ where: { userId } });
-      await prisma.user.delete({ where: { id: userId } });
+      await prisma.user.delete({ where: { id: userId } }).catch(() => {});
     }
     await app.close();
   });
@@ -74,9 +62,8 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.accessToken).toBeDefined();
       expect(response.body.data.refreshToken).toBeDefined();
       expect(response.body.data.user.email).toBe(testEmail);
-      expect(response.body.data.user.password).toBeUndefined(); // Password should not be returned
+      expect(response.body.data.user.password).toBeUndefined();
 
-      // Save userId for cleanup
       userId = response.body.data.user.id;
     });
 
@@ -84,7 +71,7 @@ describe('AuthController (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/auth/register')
         .send({
-          email: testEmail, // Same email
+          email: testEmail,
           password: testPassword,
         });
 
@@ -98,7 +85,7 @@ describe('AuthController (e2e)', () => {
         .post('/auth/register')
         .send({
           email: `short_${testEmail}`,
-          password: '123', // Minimum is 6
+          password: '123',
         });
 
       expect(response.status).toBe(400);

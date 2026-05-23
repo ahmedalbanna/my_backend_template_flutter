@@ -3,8 +3,8 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { EmailService } from '../../shared/email/email.service';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { AuthRepository } from './auth.repository';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -14,13 +14,12 @@ describe('AuthService', () => {
   let usersService: jest.Mocked<Partial<UsersService>>;
   let jwtService: jest.Mocked<Partial<JwtService>>;
   let configService: jest.Mocked<Partial<ConfigService>>;
-  let emailService: jest.Mocked<Partial<EmailService>>;
+  let authRepository: jest.Mocked<Partial<AuthRepository>>;
 
   beforeEach(async () => {
     usersService = {
       findByEmail: jest.fn(),
       create: jest.fn(),
-      updateRefreshToken: jest.fn(),
     };
 
     jwtService = {
@@ -35,8 +34,8 @@ describe('AuthService', () => {
       }),
     };
 
-    emailService = {
-      sendWelcome: jest.fn(),
+    authRepository = {
+      updateRefreshToken: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -45,7 +44,7 @@ describe('AuthService', () => {
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
-        { provide: EmailService, useValue: emailService },
+        { provide: AuthRepository, useValue: authRepository },
       ],
     }).compile();
 
@@ -63,7 +62,7 @@ describe('AuthService', () => {
 
     it('should successfully register a user and return tokens', async () => {
       usersService.findByEmail!.mockResolvedValueOnce(null);
-      
+
       const mockUser = {
         id: '1',
         email: 'test@example.com',
@@ -71,7 +70,7 @@ describe('AuthService', () => {
         password: 'hashedpassword',
         refreshToken: 'hashedrefresh',
       };
-      
+
       usersService.create!.mockResolvedValueOnce(mockUser as any);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedpassword');
 
@@ -82,7 +81,6 @@ describe('AuthService', () => {
       });
 
       expect(usersService.create).toHaveBeenCalled();
-      expect(emailService.sendWelcome).toHaveBeenCalledWith('test@example.com', 'Test');
       expect(result.accessToken).toBe('mocked_token');
       expect(result.refreshToken).toBe('mocked_token');
       expect(result.user).toBeDefined();
@@ -122,7 +120,7 @@ describe('AuthService', () => {
       const result = await service.login({ email: 'test@example.com', password: 'password123' });
 
       expect(jwtService.sign).toHaveBeenCalledTimes(2);
-      expect(usersService.updateRefreshToken).toHaveBeenCalledWith('1', 'hashedrefresh');
+      expect(authRepository.updateRefreshToken).toHaveBeenCalledWith('1', 'hashedrefresh');
       expect(result.accessToken).toBe('mocked_token');
       expect(result.refreshToken).toBe('mocked_token');
       expect(result.user).toBeDefined();

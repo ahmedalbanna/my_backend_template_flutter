@@ -19,26 +19,7 @@ export default () => ({
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
-  email: {
-    from: process.env.SMTP_FROM || 'noreply@example.com',
-    smtp: {
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  },
 
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-
-  },
-
-  upload: {
-    dir: process.env.UPLOAD_DIR || './uploads',
-    maxSize: parseInt(process.env.UPLOAD_MAX_SIZE || String(10 * 1024 * 1024), 10),
-  },
 });
 
 export const validationSchema = Joi.object({
@@ -65,18 +46,5 @@ export const validationSchema = Joi.object({
   }),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
-  // Email (optional – if not set, emails log a warning)
-  SMTP_HOST: Joi.string().optional(),
-  SMTP_PORT: Joi.number().default(587),
-  SMTP_USER: Joi.string().optional(),
-  SMTP_PASS: Joi.string().optional(),
-  SMTP_FROM: Joi.string().email().default('noreply@example.com'),
 
-  // Redis (optional – if not set, Bull Queue won't connect)
-  REDIS_HOST: Joi.string().default('localhost'),
-  REDIS_PORT: Joi.number().default(6379),
-
-  // Upload
-  UPLOAD_DIR: Joi.string().default('./uploads'),
-  UPLOAD_MAX_SIZE: Joi.number().default(10 * 1024 * 1024),
 });

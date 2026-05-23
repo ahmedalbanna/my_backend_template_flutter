@@ -3,7 +3,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
-import { EmailService } from '../src/shared/email/email.service';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { App } from 'supertest/types';
@@ -23,14 +22,7 @@ describe('UsersController (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideProvider(EmailService)
-      .useValue({
-        sendWelcome: jest.fn().mockResolvedValue(true),
-        sendPasswordReset: jest.fn().mockResolvedValue(true),
-        sendMail: jest.fn().mockResolvedValue(true),
-      })
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
@@ -40,17 +32,14 @@ describe('UsersController (e2e)', () => {
 
     prisma = app.get<PrismaService>(PrismaService);
 
-    // Register admin
     const adminRes = await request(app.getHttpServer())
       .post('/auth/register')
       .send({ email: adminEmail, password: 'password123', firstName: 'Admin', lastName: 'User' });
     adminToken = adminRes.body.data.accessToken;
     adminId = adminRes.body.data.user.id;
 
-    // Promote to ADMIN
     await prisma.user.update({ where: { id: adminId }, data: { role: 'ADMIN' } });
 
-    // Register regular user
     const userRes = await request(app.getHttpServer())
       .post('/auth/register')
       .send({ email: userEmail, password: 'password123', firstName: 'Regular', lastName: 'User' });
@@ -59,7 +48,6 @@ describe('UsersController (e2e)', () => {
 
   afterAll(async () => {
     if (adminId) {
-      await prisma.auditLog.deleteMany({ where: { userId: adminId } });
       await prisma.user.deleteMany({ where: { email: { in: [adminEmail, userEmail] } } });
     }
     await app.close();
