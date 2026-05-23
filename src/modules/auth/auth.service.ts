@@ -245,7 +245,8 @@ export class AuthService {
 
   private generateOtp(): { otp: string; hash: string } {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hash = crypto.createHash('sha256').update(otp).digest('hex');
+    const salt = this.configService.get<string>('otp.hashSecret') || 'default-otp-salt-change-in-production';
+    const hash = crypto.createHmac('sha256', salt).update(otp).digest('hex');
     return { otp, hash };
   }
 
@@ -292,7 +293,8 @@ export class AuthService {
       throw new BadRequestException('OTP has expired');
     }
 
-    const hash = crypto.createHash('sha256').update(dto.otp).digest('hex');
+    const salt = this.configService.get<string>('otp.hashSecret') || 'default-otp-salt-change-in-production';
+    const hash = crypto.createHmac('sha256', salt).update(dto.otp).digest('hex');
     const hashBuffer = Buffer.from(hash, 'utf8');
     const storedHashBuffer = Buffer.from(user.otpHash, 'utf8');
     const isMatch =

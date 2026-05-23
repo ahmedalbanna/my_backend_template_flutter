@@ -3,9 +3,8 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 
 /**
- * User object with only the truly sensitive credential fields excluded.
- * OTP hashes, reset tokens, and expiry dates are still included so that
- * admin views can see auth state without exposing login credentials.
+ * Fields returned when listing or searching users.
+ * Sensitive fields (otpHash, reset tokens, fcmToken) are excluded.
  */
 const userListSelect = {
   id: true,
@@ -15,11 +14,6 @@ const userListSelect = {
   lastName: true,
   role: true,
   isActive: true,
-  fcmToken: true,
-  otpHash: true,
-  otpExpiresAt: true,
-  passwordResetToken: true,
-  passwordResetExpires: true,
   createdAt: true,
   updatedAt: true,
 } as const;

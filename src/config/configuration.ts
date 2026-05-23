@@ -18,6 +18,10 @@ export default () => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
+
+  otp: {
+    hashSecret: process.env.OTP_HASH_SALT,
+  },
 });
 
 export const validationSchema = Joi.object({
@@ -60,4 +64,9 @@ export const validationSchema = Joi.object({
       'string.pattern.base':
         'JWT_REFRESH_EXPIRES_IN must be a valid time string (e.g. 15m, 1h, 7d)',
     }),
+
+  // OTP — Salt for HMAC-based OTP hashing
+  OTP_HASH_SALT: Joi.string().min(16).default('change-me-otp-salt-min-16-chars').messages({
+    'string.min': 'OTP_HASH_SALT must be at least 16 characters long.',
+  }),
 });

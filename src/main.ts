@@ -23,6 +23,7 @@ async function bootstrap() {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'same-origin' },
+      hidePoweredBy: true,
       // Swagger UI needs its own CSP; relax only for docs endpoint
       contentSecurityPolicy:
         process.env.NODE_ENV === 'production' ? undefined : false,

@@ -40,6 +40,7 @@ describe('AuthService', () => {
 
     configService = {
       get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'otp.hashSecret') return 'test-otp-salt-value-for-hmac';
         if (key.includes('Secret')) return 'secret';
         if (key.includes('ExpiresIn')) return '1h';
         return null;
@@ -363,8 +364,9 @@ describe('AuthService', () => {
   /* ─────────────── verifyOtp ─────────────── */
   describe('verifyOtp', () => {
     const validOtp = '123456';
+    const otpSalt = 'test-otp-salt-value-for-hmac';
     const validHash = crypto
-      .createHash('sha256')
+      .createHmac('sha256', otpSalt)
       .update(validOtp)
       .digest('hex');
 
