@@ -15,25 +15,11 @@ export class AuthRepository {
     });
   }
 
-  async findByPhone(phone: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { phone } });
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
-  }
-
-  async create(data: {
-    phone: string;
-    otpHash: string;
-    otpExpiresAt: Date;
-  }): Promise<User> {
-    return this.prisma.user.create({
-      data: {
-        phone: data.phone,
-        otpHash: data.otpHash,
-        otpExpiresAt: data.otpExpiresAt,
-        isActive: false,
+  async findUsersWithValidResetTokens(): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: {
+        passwordResetToken: { not: null },
+        passwordResetExpires: { gt: new Date() },
       },
     });
   }

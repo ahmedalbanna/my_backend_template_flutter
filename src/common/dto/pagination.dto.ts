@@ -34,6 +34,15 @@ export class PaginationQueryDto {
   })
   @IsOptional()
   @IsString()
+  @IsIn([
+    'createdAt',
+    'email',
+    'firstName',
+    'lastName',
+    'role',
+    'isActive',
+    'updatedAt',
+  ])
   sortBy?: string = 'createdAt';
 
   @ApiPropertyOptional({

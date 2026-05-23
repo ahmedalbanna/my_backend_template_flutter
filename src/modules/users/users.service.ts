@@ -66,7 +66,7 @@ export class UsersService {
     await this.usersRepository.update(id, { fcmToken: token });
   }
 
-  private sanitizeUser(user: User): Omit<User, 'password' | 'refreshToken'> {
+  sanitizeUser(user: User): Omit<User, 'password' | 'refreshToken'> {
     const { password, refreshToken, ...rest } = user;
     void [password, refreshToken];
     return rest;

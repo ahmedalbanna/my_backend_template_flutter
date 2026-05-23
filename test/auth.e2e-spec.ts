@@ -6,6 +6,7 @@ import { PrismaService } from '../src/shared/prisma/prisma.service';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 import { App } from 'supertest/types';
+import * as crypto from 'crypto';
 
 jest.setTimeout(30000);
 
@@ -16,9 +17,17 @@ describe('AuthController (e2e)', () => {
   const testEmail = `test_${Date.now()}@example.com`;
   const testPassword = 'password123';
   const testPhone = `+2011${Date.now().toString().slice(-9)}`;
+  const knownOtp = '654321';
+  const knownOtpHash = crypto
+    .createHash('sha256')
+    .update(knownOtp)
+    .digest('hex');
   let userId: string;
   let accessToken: string;
   let refreshToken: string;
+
+  // Track all test user IDs for cleanup
+  const cleanupUserIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,8 +52,8 @@ describe('AuthController (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (userId) {
-      await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+    for (const id of cleanupUserIds) {
+      await prisma.user.delete({ where: { id } }).catch(() => {});
     }
     await app.close();
   });
@@ -69,6 +78,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.user.password).toBeUndefined();
 
       userId = response.body.data.user.id;
+      cleanupUserIds.push(userId);
       accessToken = response.body.data.accessToken;
       refreshToken = response.body.data.refreshToken;
     });
@@ -199,7 +209,8 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.message).toBe(
         'OTP sent successfully (simulated)',
       );
-      expect(response.body.data.otp).toMatch(/^\d{6}$/);
+      // OTP is not returned in response for security reasons
+      expect(response.body.data.otp).toBeUndefined();
     });
 
     it('should send OTP again for an existing phone number', async () => {
@@ -209,7 +220,8 @@ describe('AuthController (e2e)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.otp).toMatch(/^\d{6}$/);
+      // OTP is not returned in response for security reasons
+      expect(response.body.data.otp).toBeUndefined();
     });
 
     it('should fail with invalid phone format', async () => {
@@ -231,38 +243,54 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('/auth/phone/verify-otp (POST)', () => {
-    let validOtp: string;
+    // Create a user with a known OTP hash for deterministic verification testing
+    let otpTestUserId: string;
+    const otpTestPhone = `+2011${(Date.now() + 1).toString().slice(-9)}`;
+
+    beforeAll(async () => {
+      const user = await prisma.user.create({
+        data: {
+          phone: otpTestPhone,
+          otpHash: knownOtpHash,
+          otpExpiresAt: new Date(Date.now() + 60000),
+          isActive: false,
+        },
+      });
+      otpTestUserId = user.id;
+      cleanupUserIds.push(otpTestUserId);
+    });
 
     it('should verify OTP and return tokens for a new registration', async () => {
-      const sendResponse = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
-        .send({ phone: testPhone });
-
-      validOtp = sendResponse.body.data.otp;
-      expect(validOtp).toMatch(/^\d{6}$/);
-
       const verifyResponse = await request(app.getHttpServer())
         .post('/auth/phone/verify-otp')
-        .send({ phone: testPhone, otp: validOtp });
+        .send({ phone: otpTestPhone, otp: knownOtp });
 
       expect(verifyResponse.status).toBe(200);
       expect(verifyResponse.body.success).toBe(true);
       expect(verifyResponse.body.data.accessToken).toBeDefined();
       expect(verifyResponse.body.data.refreshToken).toBeDefined();
-      expect(verifyResponse.body.data.user.phone).toBe(testPhone);
+      expect(verifyResponse.body.data.user.phone).toBe(otpTestPhone);
       expect(verifyResponse.body.data.user.isActive).toBe(true);
     });
 
     it('should verify OTP for an existing active user (login flow)', async () => {
-      const sendResponse = await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
-        .send({ phone: testPhone });
-
-      const otp = sendResponse.body.data.otp;
+      // Re-seed with a fresh OTP hash since the previous verify cleared it
+      const freshHash = crypto
+        .createHash('sha256')
+        .update(knownOtp)
+        .digest('hex');
+      await prisma.user.update({
+        where: { id: otpTestUserId },
+        data: {
+          otpHash: freshHash,
+          otpExpiresAt: new Date(Date.now() + 60000),
+          isActive: true,
+        },
+      });
 
       const verifyResponse = await request(app.getHttpServer())
         .post('/auth/phone/verify-otp')
-        .send({ phone: testPhone, otp });
+        .send({ phone: otpTestPhone, otp: knownOtp });
 
       expect(verifyResponse.status).toBe(200);
       expect(verifyResponse.body.data.accessToken).toBeDefined();
@@ -272,7 +300,7 @@ describe('AuthController (e2e)', () => {
     it('should fail with incorrect OTP', async () => {
       const response = await request(app.getHttpServer())
         .post('/auth/phone/verify-otp')
-        .send({ phone: testPhone, otp: '000000' });
+        .send({ phone: otpTestPhone, otp: '000000' });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -288,18 +316,22 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should fail if OTP was not requested (no OTP hash)', async () => {
-      const freshPhone = `+2011${Date.now().toString().slice(-9)}`;
+      const freshPhone = `+2011${(Date.now() + 2).toString().slice(-9)}`;
 
-      await request(app.getHttpServer())
-        .post('/auth/phone/send-otp')
-        .send({ phone: freshPhone });
+      // Create a user without OTP (simulating cleared OTP)
+      const noOtpUser = await prisma.user.create({
+        data: { phone: freshPhone, isActive: true },
+      });
+      cleanupUserIds.push(noOtpUser.id);
 
       const response = await request(app.getHttpServer())
         .post('/auth/phone/verify-otp')
         .send({ phone: freshPhone, otp: '123456' });
 
       expect(response.status).toBe(400);
-      expect(response.body.error.message).toBe('Invalid OTP code');
+      expect(response.body.error.message).toBe(
+        'No OTP requested for this phone',
+      );
     });
   });
 });

@@ -27,7 +27,6 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Permission } from '../../common/permissions';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from '@prisma/client';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
@@ -67,7 +66,7 @@ export class UsersController {
   async getProfile(@CurrentUser() user: { userId: string }) {
     const found = await this.usersService.findById(user.userId);
     if (!found) throw new NotFoundException('User not found');
-    return this.sanitizeUser(found);
+    return this.usersService.sanitizeUser(found);
   }
 
   @Put('me')
@@ -243,7 +242,7 @@ export class UsersController {
   async findById(@Param('id') id: string) {
     const user = await this.usersService.findById(id);
     if (!user) throw new NotFoundException('User not found');
-    return this.sanitizeUser(user);
+    return this.usersService.sanitizeUser(user);
   }
 
   @Put(':id')
@@ -296,11 +295,5 @@ export class UsersController {
   })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
-  }
-
-  private sanitizeUser(user: User): Omit<User, 'password' | 'refreshToken'> {
-    const { password, refreshToken, ...rest } = user;
-    void [password, refreshToken];
-    return rest;
   }
 }

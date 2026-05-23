@@ -151,11 +151,12 @@ export class AuthService {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = await bcrypt.hash(resetToken, 10);
     const expires = new Date(Date.now() + 60 * 60 * 1000);
 
     await this.authRepository.setPasswordResetToken(
       user.id,
-      resetToken,
+      hashedResetToken,
       expires,
     );
 
@@ -163,14 +164,27 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
-    const user = await this.authRepository.findByResetToken(dto.token);
-    if (!user) {
+    const usersWithTokens =
+      await this.authRepository.findUsersWithValidResetTokens();
+    let matchedUser: { id: string } | null = null;
+
+    for (const u of usersWithTokens) {
+      if (
+        u.passwordResetToken &&
+        (await bcrypt.compare(dto.token, u.passwordResetToken))
+      ) {
+        matchedUser = u;
+        break;
+      }
+    }
+
+    if (!matchedUser) {
       throw new NotFoundException('Invalid or expired reset token');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-    await this.authRepository.updatePassword(user.id, hashedPassword);
-    await this.authRepository.updateRefreshToken(user.id, null);
+    await this.authRepository.updatePassword(matchedUser.id, hashedPassword);
+    await this.authRepository.updateRefreshToken(matchedUser.id, null);
 
     return { message: 'Password reset successfully' };
   }
@@ -181,8 +195,8 @@ export class AuthService {
     return { otp, hash };
   }
 
-  async sendOtp(dto: SendOtpDto): Promise<{ message: string; otp: string }> {
-    let user = await this.authRepository.findByPhone(dto.phone);
+  async sendOtp(dto: SendOtpDto): Promise<{ message: string }> {
+    let user = await this.usersService.findByPhone(dto.phone);
 
     const { otp, hash } = this.generateOtp();
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
@@ -190,16 +204,18 @@ export class AuthService {
     if (user) {
       await this.authRepository.setOtp(user.id, hash, expiresAt);
     } else {
-      user = await this.authRepository.create({
+      user = await this.usersService.create({
         phone: dto.phone,
         otpHash: hash,
         otpExpiresAt: expiresAt,
+        isActive: false,
       });
     }
 
+    void otp;
+
     return {
       message: 'OTP sent successfully (simulated)',
-      otp,
     };
   }
 
@@ -208,7 +224,7 @@ export class AuthService {
     refreshToken: string;
     user: Record<string, unknown>;
   }> {
-    const user = await this.authRepository.findByPhone(dto.phone);
+    const user = await this.usersService.findByPhone(dto.phone);
     if (!user) {
       throw new NotFoundException('No account found with this phone number');
     }

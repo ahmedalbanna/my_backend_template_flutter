@@ -28,6 +28,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     usersService = {
       findByEmail: jest.fn(),
+      findByPhone: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
     };
@@ -46,10 +47,8 @@ describe('AuthService', () => {
     };
 
     authRepository = {
-      findByPhone: jest.fn(),
-      findById: jest.fn(),
-      create: jest.fn(),
       findByResetToken: jest.fn(),
+      findUsersWithValidResetTokens: jest.fn(),
       updateRefreshToken: jest.fn(),
       updatePassword: jest.fn(),
       setPasswordResetToken: jest.fn(),
@@ -264,6 +263,7 @@ describe('AuthService', () => {
       (crypto.randomBytes as jest.Mock).mockReturnValue(
         Buffer.from('a'.repeat(32)),
       );
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-reset-token');
 
       const result = await service.forgotPassword({
         email: 'a@b.com',
@@ -271,7 +271,7 @@ describe('AuthService', () => {
 
       expect(authRepository.setPasswordResetToken).toHaveBeenCalledWith(
         '1',
-        expect.any(String),
+        'hashed-reset-token',
         expect.any(Date),
       );
       expect(result.message).toBe(
@@ -282,17 +282,29 @@ describe('AuthService', () => {
 
   /* ─────────────── resetPassword ─────────────── */
   describe('resetPassword', () => {
-    it('should throw NotFoundException if token invalid', async () => {
-      authRepository.findByResetToken!.mockResolvedValueOnce(null);
+    it('should throw NotFoundException if no users with valid tokens', async () => {
+      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([]);
+      await expect(
+        service.resetPassword({ token: 'bad', newPassword: 'newPass123' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if token does not match any user', async () => {
+      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([
+        { id: '1', passwordResetToken: 'stored-hash' },
+      ] as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+
       await expect(
         service.resetPassword({ token: 'bad', newPassword: 'newPass123' }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should update password and clear refresh tokens on success', async () => {
-      authRepository.findByResetToken!.mockResolvedValueOnce({
-        id: '1',
-      } as any);
+      authRepository.findUsersWithValidResetTokens!.mockResolvedValueOnce([
+        { id: '1', passwordResetToken: 'stored-hash' },
+      ] as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
       (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-pw');
 
       const result = await service.resetPassword({
@@ -312,25 +324,25 @@ describe('AuthService', () => {
   /* ─────────────── sendOtp ─────────────── */
   describe('sendOtp', () => {
     it('should create a new user when phone does not exist', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce(null);
-      authRepository.create!.mockResolvedValueOnce({
+      usersService.findByPhone!.mockResolvedValueOnce(null);
+      usersService.create!.mockResolvedValueOnce({
         id: 'new-id',
         phone: '+201234567890',
       } as any);
 
       const result = await service.sendOtp({ phone: '+201234567890' });
 
-      expect(authRepository.create).toHaveBeenCalledWith({
+      expect(usersService.create).toHaveBeenCalledWith({
         phone: '+201234567890',
         otpHash: expect.any(String),
         otpExpiresAt: expect.any(Date),
+        isActive: false,
       });
       expect(result.message).toBe('OTP sent successfully (simulated)');
-      expect(result.otp).toMatch(/^\d{6}$/);
     });
 
     it('should update OTP for existing user', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce({
+      usersService.findByPhone!.mockResolvedValueOnce({
         id: 'existing-id',
         phone: '+201234567890',
       } as any);
@@ -342,8 +354,8 @@ describe('AuthService', () => {
         expect.any(String),
         expect.any(Date),
       );
-      expect(authRepository.create).not.toHaveBeenCalled();
-      expect(result.otp).toMatch(/^\d{6}$/);
+      expect(usersService.create).not.toHaveBeenCalled();
+      expect(result.message).toBe('OTP sent successfully (simulated)');
     });
   });
 
@@ -356,14 +368,14 @@ describe('AuthService', () => {
       .digest('hex');
 
     it('should throw NotFoundException if phone does not exist', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce(null);
+      usersService.findByPhone!.mockResolvedValueOnce(null);
       await expect(
         service.verifyOtp({ phone: '+201234567890', otp: validOtp }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if no OTP was requested', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce({
+      usersService.findByPhone!.mockResolvedValueOnce({
         id: '1',
         otpHash: null,
         otpExpiresAt: null,
@@ -374,7 +386,7 @@ describe('AuthService', () => {
     });
 
     it('should throw BadRequestException if OTP has expired', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce({
+      usersService.findByPhone!.mockResolvedValueOnce({
         id: '1',
         otpHash: validHash,
         otpExpiresAt: new Date(Date.now() - 1000),
@@ -385,7 +397,7 @@ describe('AuthService', () => {
     });
 
     it('should throw BadRequestException if OTP is wrong', async () => {
-      authRepository.findByPhone!.mockResolvedValueOnce({
+      usersService.findByPhone!.mockResolvedValueOnce({
         id: '1',
         otpHash: validHash,
         otpExpiresAt: new Date(Date.now() + 60000),
@@ -409,7 +421,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      authRepository.findByPhone!.mockResolvedValueOnce(mockUser as any);
+      usersService.findByPhone!.mockResolvedValueOnce(mockUser as any);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-refresh');
 
       const result = await service.verifyOtp({
@@ -436,7 +448,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      authRepository.findByPhone!.mockResolvedValueOnce(mockUser as any);
+      usersService.findByPhone!.mockResolvedValueOnce(mockUser as any);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-refresh');
 
       await service.verifyOtp({ phone: '+201234567890', otp: validOtp });
