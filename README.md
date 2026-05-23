@@ -45,6 +45,25 @@ Server runs at **http://localhost:3000** — Swagger docs at **http://localhost:
 
 ---
 
+## Cross-Platform Support
+
+This template runs on **Windows**, **Linux**, and **macOS**.
+
+| Concern | Status |
+|---------|--------|
+| **Line endings** | `.gitattributes` enforces LF in repo, auto-converts on checkout |
+| **Native modules** | `bcrypt` and `better-sqlite3` compile on all platforms |
+| **Docker (Alpine)** | Build tools (`python3`, `make`, `g++`) pre-installed in Dockerfile |
+| **Node.js version** | `.nvmrc` / `.node-version` pin to Node 20 |
+| **Path separators** | All scripts use forward slashes (Node.js handles cross-platform) |
+
+> **Windows users**: Run commands in **Git Bash**, **WSL**, or **PowerShell**. If you encounter native module build errors, ensure you have [windows-build-tools](https://github.com/felixrieseberg/windows-build-tools) installed:
+> ```bash
+> npm install --global windows-build-tools
+> ```
+
+---
+
 ## Project Structure
 
 ```
@@ -63,7 +82,6 @@ src/
 ├── modules/
 │   ├── auth/                # Authentication (JWT, register, login, refresh)
 │   ├── users/               # User CRUD (profile, admin)
-│   ├── products/            # Example CRUD module
 │   └── health/              # Database health check
 └── shared/
     └── prisma/              # PrismaService (database client)
@@ -126,10 +144,6 @@ Copy `.env.example` to `.env` and update values.
 | PUT | `/users/:id` | Admin | Update any user |
 | DELETE | `/users/:id` | Admin | Delete any user |
 
-### Products (`/products`)
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
 ### Health (`/health`)
 
 | Method | Path | Auth | Description |

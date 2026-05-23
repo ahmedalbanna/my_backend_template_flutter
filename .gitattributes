@@ -1,0 +1,16 @@
+# Normalize line endings to LF (Unix) in the repository
+* text=auto eol=lf
+
+# Binary files should not be modified
+*.db binary
+*.db-journal binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
