@@ -1,6 +1,14 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { getPermissionsForRole } from '../permissions';
+import type { Permission } from '../permissions';
 import { Request } from 'express';
 
 interface RequestWithUser extends Request {
@@ -16,10 +24,43 @@ export class RolesGuard implements CanActivate {
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (!requiredRoles) {
+    const requiredPermissions = this.reflector.getAllAndOverride<Permission[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredRoles && !requiredPermissions) {
       return true;
     }
+
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    return requiredRoles.some((role) => request.user?.role === role);
+    const userRole = request.user?.role;
+
+    if (!userRole) {
+      throw new ForbiddenException('Access denied: no role assigned');
+    }
+
+    if (requiredRoles && requiredRoles.length > 0) {
+      const hasRole = requiredRoles.some((role) => userRole === role);
+      if (!hasRole) {
+        throw new ForbiddenException(
+          `Access denied: requires one of [${requiredRoles.join(', ')}] roles`,
+        );
+      }
+    }
+
+    if (requiredPermissions && requiredPermissions.length > 0) {
+      const userPermissions = getPermissionsForRole(userRole);
+      const hasAllPermissions = requiredPermissions.every((p) =>
+        userPermissions.includes(p),
+      );
+      if (!hasAllPermissions) {
+        throw new ForbiddenException(
+          `Access denied: missing required permissions [${requiredPermissions.join(', ')}]`,
+        );
+      }
+    }
+
+    return true;
   }
 }

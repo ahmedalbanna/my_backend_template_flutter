@@ -24,6 +24,8 @@ import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/permissions';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 
@@ -35,6 +37,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
+  @Permissions(Permission.USERS_READ)
   @ApiOperation({
     summary: 'Get current authenticated user profile',
     description:
@@ -68,6 +71,7 @@ export class UsersController {
   }
 
   @Put('me')
+  @Permissions(Permission.USERS_WRITE)
   @ApiOperation({
     summary: 'Update current authenticated user profile',
     description:
@@ -103,6 +107,7 @@ export class UsersController {
   }
 
   @Patch('fcm-token')
+  @Permissions(Permission.USERS_WRITE)
   @ApiOperation({
     summary: 'Update FCM push notification token',
     description:
@@ -124,6 +129,7 @@ export class UsersController {
   }
 
   @Delete('me')
+  @Permissions(Permission.USERS_DELETE)
   @ApiOperation({
     summary: 'Delete current authenticated user account',
     description:
@@ -145,6 +151,7 @@ export class UsersController {
 
   @Get()
   @Roles('ADMIN')
+  @Permissions(Permission.USERS_READ)
   @ApiOperation({
     summary: '[Admin] List all users with pagination',
     description:
@@ -206,6 +213,7 @@ export class UsersController {
 
   @Get(':id')
   @Roles('ADMIN')
+  @Permissions(Permission.USERS_READ)
   @ApiOperation({
     summary: '[Admin] Get a user by ID',
     description:
@@ -240,6 +248,7 @@ export class UsersController {
 
   @Put(':id')
   @Roles('ADMIN')
+  @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: '[Admin] Update any user (including role & isActive)',
     description:
@@ -268,6 +277,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles('ADMIN')
+  @Permissions(Permission.USERS_DELETE)
   @ApiOperation({
     summary: '[Admin] Delete a user permanently',
     description:
