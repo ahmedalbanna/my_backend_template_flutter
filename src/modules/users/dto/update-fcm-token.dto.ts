@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -11,5 +11,6 @@ export class UpdateFcmTokenDto {
   })
   @IsNotEmpty({ message: 'FCM token is required' })
   @IsString()
+  @MaxLength(1024, { message: 'FCM token must be at most 1024 characters' })
   token!: string;
 }

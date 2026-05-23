@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -13,6 +14,7 @@ export class RegisterDto {
     description: 'User email address — must be unique',
   })
   @IsEmail({}, { message: 'Please provide a valid email address' })
+  @MaxLength(255, { message: 'Email must be at most 255 characters' })
   email!: string;
 
   @ApiProperty({
@@ -21,7 +23,9 @@ export class RegisterDto {
     minLength: 6,
   })
   @IsNotEmpty({ message: 'Password is required' })
+  @IsString()
   @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MaxLength(128, { message: 'Password must be at most 128 characters' })
   password!: string;
 
   @ApiPropertyOptional({
@@ -30,6 +34,7 @@ export class RegisterDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100, { message: 'First name must be at most 100 characters' })
   firstName?: string;
 
   @ApiPropertyOptional({
@@ -38,5 +43,6 @@ export class RegisterDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100, { message: 'Last name must be at most 100 characters' })
   lastName?: string;
 }

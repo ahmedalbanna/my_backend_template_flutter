@@ -1,4 +1,4 @@
-import { IsEmail } from 'class-validator';
+import { IsEmail, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ForgotPasswordDto {
@@ -7,5 +7,6 @@ export class ForgotPasswordDto {
     description: 'Email address of the account to reset',
   })
   @IsEmail({}, { message: 'Please provide a valid email address' })
+  @MaxLength(255, { message: 'Email must be at most 255 characters' })
   email!: string;
 }

@@ -35,15 +35,29 @@ export const validationSchema = Joi.object({
       'DATABASE_URL is required. Please set it in your .env file.',
   }),
 
-  // JWT
-  JWT_SECRET: Joi.string().min(16).required().messages({
+  // JWT — Minimum 32 chars for production-grade security
+  JWT_SECRET: Joi.string().min(32).required().messages({
     'any.required': 'JWT_SECRET is required.',
-    'string.min': 'JWT_SECRET must be at least 16 characters long.',
+    'string.min':
+      'JWT_SECRET must be at least 32 characters long for security.',
   }),
-  JWT_EXPIRES_IN: Joi.string().default('15m'),
-  JWT_REFRESH_SECRET: Joi.string().min(16).required().messages({
+  JWT_EXPIRES_IN: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('15m')
+    .messages({
+      'string.pattern.base':
+        'JWT_EXPIRES_IN must be a valid time string (e.g. 15m, 1h, 7d)',
+    }),
+  JWT_REFRESH_SECRET: Joi.string().min(32).required().messages({
     'any.required': 'JWT_REFRESH_SECRET is required.',
-    'string.min': 'JWT_REFRESH_SECRET must be at least 16 characters long.',
+    'string.min':
+      'JWT_REFRESH_SECRET must be at least 32 characters long for security.',
   }),
-  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('7d')
+    .messages({
+      'string.pattern.base':
+        'JWT_REFRESH_EXPIRES_IN must be a valid time string (e.g. 15m, 1h, 7d)',
+    }),
 });

@@ -237,7 +237,13 @@ export class AuthService {
     }
 
     const hash = crypto.createHash('sha256').update(dto.otp).digest('hex');
-    if (hash !== user.otpHash) {
+    // Constant-time comparison to prevent timing attacks on OTP verification
+    const hashBuffer = Buffer.from(hash, 'utf8');
+    const storedHashBuffer = Buffer.from(user.otpHash, 'utf8');
+    const isMatch =
+      hashBuffer.length === storedHashBuffer.length &&
+      crypto.timingSafeEqual(hashBuffer, storedHashBuffer);
+    if (!isMatch) {
       throw new BadRequestException('Invalid OTP code');
     }
 

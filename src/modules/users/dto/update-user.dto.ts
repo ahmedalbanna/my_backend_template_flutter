@@ -3,7 +3,9 @@ import {
   IsOptional,
   IsString,
   IsBoolean,
+  MaxLength,
   MinLength,
+  IsIn,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -14,6 +16,7 @@ export class UpdateUserDto {
   })
   @IsOptional()
   @IsEmail({}, { message: 'Please provide a valid email address' })
+  @MaxLength(255, { message: 'Email must be at most 255 characters' })
   email?: string;
 
   @ApiPropertyOptional({
@@ -22,6 +25,7 @@ export class UpdateUserDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100, { message: 'First name must be at most 100 characters' })
   firstName?: string;
 
   @ApiPropertyOptional({
@@ -30,6 +34,7 @@ export class UpdateUserDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100, { message: 'Last name must be at most 100 characters' })
   lastName?: string;
 
   @ApiPropertyOptional({
@@ -39,6 +44,9 @@ export class UpdateUserDto {
   })
   @IsOptional()
   @IsString()
+  @IsIn(['USER', 'ADMIN'], {
+    message: 'Role must be either USER or ADMIN',
+  })
   role?: string;
 
   @ApiPropertyOptional({
@@ -57,5 +65,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MaxLength(128, { message: 'Password must be at most 128 characters' })
   password?: string;
 }

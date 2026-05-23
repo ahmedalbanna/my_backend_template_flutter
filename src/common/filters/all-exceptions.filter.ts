@@ -30,7 +30,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
               exceptionResponse
             : exceptionResponse;
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // In production, don't leak internal error messages to the client
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      message =
+        nodeEnv === 'production' ? 'Internal server error' : exception.message;
       this.logger.error(
         `Unhandled exception: ${exception.message}`,
         exception.stack,
