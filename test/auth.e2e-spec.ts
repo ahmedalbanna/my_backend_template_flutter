@@ -16,9 +16,12 @@ describe('AuthController (e2e)', () => {
   const testEmail = `test_${Date.now()}@example.com`;
   const testPassword = 'password123';
   const testPhone = `+2011${Date.now().toString().slice(-9)}`;
+  const testPhoneForPwd = `+2012${(Date.now() + 10000).toString().slice(-9)}`;
+  const testPhonePwd = 'phonePwd123';
   let userId: string;
   let accessToken: string;
   let refreshToken: string;
+  let phoneOtpCode: string;
 
   // Track all test user IDs for cleanup
   const cleanupUserIds: string[] = [];
@@ -88,6 +91,25 @@ describe('AuthController (e2e)', () => {
       expect(response.body.error.message).toContain('Email already in use');
     });
 
+    it('should register a user with phone+password and return OTP (not tokens)', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/register')
+        .send({
+          phone: testPhoneForPwd,
+          password: testPhonePwd,
+          firstName: 'Phone',
+          lastName: 'User',
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.message).toBe(
+        'Account created. Please verify your phone via OTP.',
+      );
+      expect(response.body.data.otp).toMatch(/^\d{6}$/);
+      phoneOtpCode = response.body.data.otp;
+    });
+
     it('should fail if password is too short', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/register')
@@ -100,6 +122,15 @@ describe('AuthController (e2e)', () => {
 
   /* ─────────────── Login ─────────────── */
   describe('/api/v1/auth/login (POST)', () => {
+    // Activate the phone+password user by verifying OTP before login tests
+    beforeAll(async () => {
+      if (testPhoneForPwd && phoneOtpCode) {
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/phone/verify-otp')
+          .send({ phone: testPhoneForPwd, otp: phoneOtpCode });
+      }
+    });
+
     it('should login successfully with correct credentials', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
@@ -130,6 +161,18 @@ describe('AuthController (e2e)', () => {
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
+    });
+
+    it('should login successfully with phone+password', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ phone: testPhoneForPwd, password: testPhonePwd });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
+      expect(response.body.data.user.phone).toBe(testPhoneForPwd);
     });
   });
 

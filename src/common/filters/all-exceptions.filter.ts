@@ -3,17 +3,23 @@ import {
   Catch,
   ArgumentsHost,
   HttpStatus,
+  HttpException,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost) {
+    if (exception instanceof HttpException) {
+      return;
+    }
+
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     const nodeEnv = process.env.NODE_ENV || 'development';
 
@@ -30,6 +36,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
           nodeEnv === 'production'
             ? 'Internal server error'
             : String(exception),
+        timestamp: new Date().toISOString(),
+        path: request.url,
       },
     });
   }

@@ -23,6 +23,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { SendVerificationEmailDto } from './dto/send-verification-email.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import {
   AuthTokensWithUserDto,
   AuthTokensDto,
@@ -58,14 +60,30 @@ export class AuthController {
   )
   @ApiResponse({
     status: 201,
-    description: 'Registration successful',
+    description:
+      'Registration successful. Returns tokens for immediate activation, ' +
+      'or a message if email verification is required.',
     schema: {
-      allOf: [
-        { $ref: getSchemaPath(ApiSuccessResponse) },
+      oneOf: [
         {
-          properties: {
-            data: { $ref: getSchemaPath(AuthTokensWithUserDto) },
-          },
+          allOf: [
+            { $ref: getSchemaPath(ApiSuccessResponse) },
+            {
+              properties: {
+                data: { $ref: getSchemaPath(AuthTokensWithUserDto) },
+              },
+            },
+          ],
+        },
+        {
+          allOf: [
+            { $ref: getSchemaPath(ApiSuccessResponse) },
+            {
+              properties: {
+                data: { $ref: getSchemaPath(MessageResponseDto) },
+              },
+            },
+          ],
         },
       ],
     },
@@ -120,11 +138,17 @@ export class AuthController {
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid email or password, or account deactivated',
+    description:
+      'Invalid email or password, account deactivated, ' +
+      'email not verified, or account locked',
     schema: {
       example: {
         success: false,
-        error: { statusCode: 401, message: 'Invalid credentials' },
+        error: {
+          statusCode: 401,
+          message:
+            'Invalid credentials | Account locked. Try again in X minute(s). | Please verify your email',
+        },
       },
     },
   })
@@ -309,6 +333,77 @@ export class AuthController {
   })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  @Post('send-verification-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send email verification link',
+    description:
+      'Sends a verification email to the user if the email exists. ' +
+      'Always returns the same response to prevent email enumeration.',
+  })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
+  @ApiResponse({
+    status: 200,
+    description: 'Verification email sent',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
+    },
+  })
+  sendVerificationEmail(@Body() dto: SendVerificationEmailDto) {
+    return this.authService.sendVerificationEmail(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify email address with token',
+    description:
+      'Verifies the user email using the token received via email. ' +
+      'After successful verification, the user can sign in.',
+  })
+  @ApiExtraModels(ApiSuccessResponse, MessageResponseDto)
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified successfully',
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(ApiSuccessResponse) },
+        {
+          properties: {
+            data: { $ref: getSchemaPath(MessageResponseDto) },
+          },
+        },
+      ],
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Invalid or expired verification token',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          statusCode: 404,
+          message: 'Invalid or expired email verification token',
+        },
+      },
+    },
+  })
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto);
   }
 
   @Public()

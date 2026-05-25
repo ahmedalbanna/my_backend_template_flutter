@@ -18,6 +18,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@example.com',
+      phone: '+201000000000',
       password: adminPassword,
       firstName: 'Admin',
       lastName: 'User',
@@ -25,7 +26,7 @@ async function main() {
     },
   });
 
-  console.log('Seed completed:', { id: admin.id, email: admin.email, role: admin.role });
+  console.log('Seed completed:', { id: admin.id, email: admin.email, phone: admin.phone, role: admin.role });
 }
 
 main()

@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import configuration, { validationSchema } from './config/configuration';
 import { PrismaModule } from './shared/prisma/prisma.module';
+import { EmailModule } from './shared/email/email.module';
+import { SmsModule } from './shared/sms/sms.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { HealthModule } from './modules/health/health.module';
@@ -22,6 +24,8 @@ import { HealthModule } from './modules/health/health.module';
       },
     }),
     PrismaModule,
+    EmailModule,
+    SmsModule,
     AuthModule,
     UsersModule,
     HealthModule,

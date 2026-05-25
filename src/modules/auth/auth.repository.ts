@@ -101,4 +101,71 @@ export class AuthRepository {
       select: { id: true },
     });
   }
+
+  // ── Email Verification ──────────────────────────────────────
+
+  async findByEmailVerificationToken(
+    tokenHash: string,
+  ): Promise<{ id: string } | null> {
+    return this.prisma.user.findFirst({
+      where: {
+        emailVerificationToken: tokenHash,
+        emailVerificationExpires: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+  }
+
+  async setEmailVerificationToken(
+    id: string,
+    tokenHash: string,
+    expires: Date,
+  ): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        emailVerificationToken: tokenHash,
+        emailVerificationExpires: expires,
+      },
+      select: { id: true },
+    });
+  }
+
+  async verifyEmail(id: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        emailVerified: new Date(),
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      },
+      select: { id: true },
+    });
+  }
+
+  // ── Account Lockout ─────────────────────────────────────────
+
+  async incrementLoginAttempts(id: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { loginAttempts: { increment: 1 } },
+      select: { id: true },
+    });
+  }
+
+  async lockAccount(id: string, until: Date): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { loginAttempts: 0, lockUntil: until },
+      select: { id: true },
+    });
+  }
+
+  async resetLoginAttempts(id: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { loginAttempts: 0, lockUntil: null },
+      select: { id: true },
+    });
+  }
 }

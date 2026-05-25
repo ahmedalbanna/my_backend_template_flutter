@@ -3,10 +3,13 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../../shared/email/email.service';
+import { SmsService } from '../../shared/sms/sms.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import ms from 'ms';
@@ -17,21 +20,32 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { SendVerificationEmailDto } from './dto/send-verification-email.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { AuthRepository } from './auth.repository';
 
 const OTP_EXPIRY_MINUTES = 5;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private authRepository: AuthRepository,
+    private emailService: EmailService,
+    private smsService: SmsService,
   ) {}
 
-  private generateTokens(userId: string, email?: string, phone?: string) {
-    const payload: Record<string, unknown> = { sub: userId };
+  private generateTokens(
+    userId: string,
+    role: string,
+    email?: string,
+    phone?: string,
+  ) {
+    const payload: Record<string, unknown> = { sub: userId, role };
     if (email) payload.email = email;
     if (phone) payload.phone = phone;
 
@@ -75,8 +89,31 @@ export class AuthService {
   private excludeSensitive(
     user: Record<string, unknown>,
   ): Record<string, unknown> {
-    const { password: _pw, refreshToken: _rt, ...rest } = user;
-    void [_pw, _rt];
+    const {
+      password: _pw,
+      refreshToken: _rt,
+      otpHash: _oh,
+      otpExpiresAt: _oe,
+      passwordResetToken: _prt,
+      passwordResetExpires: _pre,
+      emailVerificationToken: _evt,
+      emailVerificationExpires: _eve,
+      loginAttempts: _la,
+      lockUntil: _lu,
+      ...rest
+    } = user;
+    void [
+      _pw,
+      _rt,
+      _oh,
+      _oe,
+      _prt,
+      _pre,
+      _evt,
+      _eve,
+      _la,
+      _lu,
+    ];
     return rest;
   }
 
@@ -101,33 +138,83 @@ export class AuthService {
     const hashedPassword = password
       ? await bcrypt.hash(password, 10)
       : undefined;
+
+    // ── Phone-based registration → require OTP ──
+    if (phone) {
+      const { otp, hash } = this.generateOtp();
+      const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+      const user = await this.usersService.create({
+        ...(email && { email }),
+        phone,
+        ...(hashedPassword && { password: hashedPassword }),
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+        otpHash: hash,
+        otpExpiresAt: expiresAt,
+        isActive: false,
+      });
+
+      await this.smsService.sendOtp(phone, otp);
+
+      const message = 'Account created. Please verify your phone via OTP.';
+      const isDev = this.configService.get<string>('NODE_ENV') !== 'production';
+      const result: { message: string; otp?: string } = { message };
+      if (isDev) result.otp = otp;
+      return result;
+    }
+
+    // ── Email+password registration → require email verification ──
     const user = await this.usersService.create({
-      ...(email && { email }),
-      ...(phone && { phone }),
-      ...(hashedPassword && { password: hashedPassword }),
+      email,
+      password: hashedPassword!,
       ...(firstName && { firstName }),
       ...(lastName && { lastName }),
-      ...(!password && { isActive: false }),
     });
 
-    if (!password) {
+    const skipVerification = this.configService.get<boolean>(
+      'auth.skipEmailVerification',
+    );
+
+    if (skipVerification) {
+      const tokens = this.generateTokens(
+        user.id,
+        user.role,
+        user.email ?? undefined,
+        user.phone ?? undefined,
+      );
+      const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
+      await this.authRepository.updateRefreshToken(
+        user.id,
+        hashedRefreshToken,
+      );
       return {
-        message: 'Account created. Please verify your phone via OTP.',
-        userId: user.id,
+        ...tokens,
+        user: this.excludeSensitive(user),
       };
     }
 
-    const tokens = this.generateTokens(
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(verificationToken)
+      .digest('hex');
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.authRepository.setEmailVerificationToken(
       user.id,
-      user.email ?? undefined,
-      user.phone ?? undefined,
+      hashedToken,
+      expires,
     );
-    const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
-    await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
+
+    await this.emailService.sendVerificationEmail(
+      user.email!,
+      verificationToken,
+    );
 
     return {
-      ...tokens,
-      user: this.excludeSensitive(user),
+      message:
+        'Account created. Please check your email to verify your account.',
     };
   }
 
@@ -140,19 +227,70 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = user.password
-      ? await bcrypt.compare(password, user.password)
-      : false;
+    // ── Account lockout check ──
+    const maxAttempts = this.configService.get<number>(
+      'auth.maxLoginAttempts',
+    )!;
+    const lockMinutes = this.configService.get<number>(
+      'auth.accountLockMinutes',
+    )!;
+
+    if (user.lockUntil && new Date() < user.lockUntil) {
+      const remaining = Math.ceil(
+        (user.lockUntil.getTime() - Date.now()) / 60000,
+      );
+      throw new UnauthorizedException(
+        `Account locked. Try again in ${remaining} minute(s).`,
+      );
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException(
+        'This account uses OTP authentication. Please sign in with a verification code.',
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      const newAttempts = user.loginAttempts + 1;
+      await this.authRepository.incrementLoginAttempts(user.id);
+
+      if (newAttempts >= maxAttempts) {
+        const until = new Date(
+          Date.now() + lockMinutes * 60 * 1000,
+        );
+        await this.authRepository.lockAccount(user.id, until);
+        throw new UnauthorizedException(
+          `Account locked due to too many failed attempts. Try again in ${lockMinutes} minute(s).`,
+        );
+      }
+
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.isActive === false) {
-      throw new UnauthorizedException('Account is deactivated');
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Account not activated. Please verify your phone via OTP.',
+      );
     }
+
+    // ── Check email verification for email-based accounts ──
+    if (user.email && !user.emailVerified) {
+      const skipVerification = this.configService.get<boolean>(
+        'auth.skipEmailVerification',
+      );
+      if (!skipVerification) {
+        throw new UnauthorizedException(
+          'Please verify your email before signing in. Check your inbox for the verification link.',
+        );
+      }
+    }
+
+    await this.authRepository.resetLoginAttempts(user.id);
 
     const tokens = this.generateTokens(
       user.id,
+      user.role,
       user.email ?? undefined,
       user.phone ?? undefined,
     );
@@ -190,6 +328,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(
       user.id,
+      user.role,
       user.email ?? undefined,
       user.phone ?? undefined,
     );
@@ -223,6 +362,11 @@ export class AuthService {
       expires,
     );
 
+    await this.emailService.sendPasswordResetEmail(
+      user.email!,
+      resetToken,
+    );
+
     return { message: 'If the email exists, a reset link has been sent.' };
   }
 
@@ -245,6 +389,68 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
+  // ── Email Verification ─────────────────────────────────────
+
+  async sendVerificationEmail(
+    dto: SendVerificationEmailDto,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      return { message: 'If the email exists, a verification link has been sent.' };
+    }
+
+    if (user.emailVerified) {
+      return { message: 'Email is already verified.' };
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(verificationToken)
+      .digest('hex');
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.authRepository.setEmailVerificationToken(
+      user.id,
+      hashedToken,
+      expires,
+    );
+
+    await this.emailService.sendVerificationEmail(
+      user.email!,
+      verificationToken,
+    );
+
+    return {
+      message: 'If the email exists, a verification link has been sent.',
+    };
+  }
+
+  async verifyEmail(
+    dto: VerifyEmailDto,
+  ): Promise<{ message: string }> {
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
+
+    const user = await this.authRepository.findByEmailVerificationToken(
+      tokenHash,
+    );
+
+    if (!user) {
+      throw new NotFoundException(
+        'Invalid or expired email verification token',
+      );
+    }
+
+    await this.authRepository.verifyEmail(user.id);
+
+    return { message: 'Email verified successfully. You can now sign in.' };
+  }
+
+  // ── OTP ─────────────────────────────────────────────────────
+
   private generateOtp(): { otp: string; hash: string } {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const salt = this.configService.get<string>('otp.hashSecret')!;
@@ -256,6 +462,10 @@ export class AuthService {
     let user = await this.usersService.findByPhone(dto.phone);
 
     const { otp, hash } = this.generateOtp();
+    const isDev = this.configService.get<string>('NODE_ENV') !== 'production';
+    if (isDev) {
+      this.logger.log(`📱 OTP for ${dto.phone}: ${otp}`);
+    }
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
     if (user) {
@@ -269,7 +479,8 @@ export class AuthService {
       });
     }
 
-    const isDev = this.configService.get<string>('NODE_ENV') !== 'production';
+    await this.smsService.sendOtp(dto.phone, otp);
+
     if (isDev) {
       return { message: 'OTP sent successfully (simulated)', otp };
     }
@@ -315,6 +526,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(
       user.id,
+      user.role,
       user.email ?? undefined,
       user.phone ?? undefined,
     );

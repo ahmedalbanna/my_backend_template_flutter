@@ -90,6 +90,7 @@ describe('AuthService', () => {
         firstName: 'Test',
         password: 'hashedpassword',
         refreshToken: 'hashedrefresh',
+        role: 'USER',
       };
       usersService.create!.mockResolvedValueOnce(mockUser as any);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashedpassword');

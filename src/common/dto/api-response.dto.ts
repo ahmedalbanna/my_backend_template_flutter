@@ -31,6 +31,10 @@ export class ApiErrorResponse {
     statusCode: number;
     /** Human-readable error message or array of validation errors */
     message: string | string[];
+    /** ISO timestamp of when the error occurred */
+    timestamp: string;
+    /** The URL path that triggered the error */
+    path: string;
   };
 }
 

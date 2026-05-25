@@ -22,6 +22,27 @@ export default () => ({
   otp: {
     hashSecret: process.env.OTP_HASH_SALT,
   },
+
+  mail: {
+    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.EMAIL_FROM || 'noreply@example.com',
+  },
+
+  sms: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
+  },
+
+  auth: {
+    maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
+    accountLockMinutes: parseInt(process.env.ACCOUNT_LOCK_MINUTES || '15', 10),
+    skipEmailVerification:
+      process.env.SKIP_EMAIL_VERIFICATION === 'true',
+  },
 });
 
 export const validationSchema = Joi.object({
@@ -72,4 +93,21 @@ export const validationSchema = Joi.object({
     .messages({
       'string.min': 'OTP_HASH_SALT must be at least 16 characters long.',
     }),
+
+  // Mail (SMTP)
+  SMTP_HOST: Joi.string().default('smtp.ethereal.email'),
+  SMTP_PORT: Joi.number().default(587),
+  SMTP_USER: Joi.string().allow('').default(''),
+  SMTP_PASS: Joi.string().allow('').default(''),
+  EMAIL_FROM: Joi.string().default('noreply@example.com'),
+
+  // SMS (Twilio)
+  TWILIO_ACCOUNT_SID: Joi.string().allow('').default(''),
+  TWILIO_AUTH_TOKEN: Joi.string().allow('').default(''),
+  TWILIO_PHONE_NUMBER: Joi.string().allow('').default(''),
+
+  // Auth Security
+  MAX_LOGIN_ATTEMPTS: Joi.number().default(5),
+  ACCOUNT_LOCK_MINUTES: Joi.number().default(15),
+  SKIP_EMAIL_VERIFICATION: Joi.boolean().default(false),
 });
