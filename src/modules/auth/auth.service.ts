@@ -72,6 +72,14 @@ export class AuthService {
     }
   }
 
+  private excludeSensitive(
+    user: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const { password: _pw, refreshToken: _rt, ...rest } = user;
+    void [_pw, _rt];
+    return rest;
+  }
+
   async register(registerDto: RegisterDto) {
     const { email, phone, password, firstName, lastName } = registerDto;
     this.assertIdentifierProvided(email, phone);
@@ -117,13 +125,10 @@ export class AuthService {
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
-    const {
-      password: _password,
-      refreshToken: _refreshToken,
-      ...result
-    } = user;
-    void [_password, _refreshToken];
-    return { ...tokens, user: result };
+    return {
+      ...tokens,
+      user: this.excludeSensitive(user),
+    };
   }
 
   async login(loginDto: LoginDto) {
@@ -154,13 +159,10 @@ export class AuthService {
     const hashedRefreshToken = await this.hashToken(tokens.refreshToken);
     await this.authRepository.updateRefreshToken(user.id, hashedRefreshToken);
 
-    const {
-      password: _password,
-      refreshToken: _refreshToken,
-      ...result
-    } = user;
-    void [_password, _refreshToken];
-    return { ...tokens, user: result };
+    return {
+      ...tokens,
+      user: this.excludeSensitive(user),
+    };
   }
 
   async refreshTokens(dto: RefreshTokenDto) {
@@ -245,7 +247,7 @@ export class AuthService {
 
   private generateOtp(): { otp: string; hash: string } {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const salt = this.configService.get<string>('otp.hashSecret') || 'default-otp-salt-change-in-production';
+    const salt = this.configService.get<string>('otp.hashSecret')!;
     const hash = crypto.createHmac('sha256', salt).update(otp).digest('hex');
     return { otp, hash };
   }
@@ -293,13 +295,14 @@ export class AuthService {
       throw new BadRequestException('OTP has expired');
     }
 
-    const salt = this.configService.get<string>('otp.hashSecret') || 'default-otp-salt-change-in-production';
-    const hash = crypto.createHmac('sha256', salt).update(dto.otp).digest('hex');
-    const hashBuffer = Buffer.from(hash, 'utf8');
-    const storedHashBuffer = Buffer.from(user.otpHash, 'utf8');
+    const salt = this.configService.get<string>('otp.hashSecret')!;
+    const hash = crypto
+      .createHmac('sha256', salt)
+      .update(dto.otp)
+      .digest('hex');
     const isMatch =
-      hashBuffer.length === storedHashBuffer.length &&
-      crypto.timingSafeEqual(hashBuffer, storedHashBuffer);
+      Buffer.from(hash).length === Buffer.from(user.otpHash).length &&
+      crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(user.otpHash));
     if (!isMatch) {
       throw new BadRequestException('Invalid OTP code');
     }

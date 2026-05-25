@@ -45,7 +45,7 @@ export class UsersService {
       orderBy: { [sortBy]: sortOrder },
     });
 
-    const sanitized = users.map((u) => this.sanitizeUser(u));
+    const sanitized = users.map((u) => this.sanitizeUser(u as User));
 
     return {
       data: sanitized,
@@ -70,10 +70,8 @@ export class UsersService {
     await this.usersRepository.update(id, { fcmToken: token });
   }
 
-  sanitizeUser(
-    user: Omit<User, 'password' | 'refreshToken'> | User,
-  ): Omit<User, 'password' | 'refreshToken'> {
-    const { password, refreshToken, ...rest } = user as User;
+  sanitizeUser(user: User): Omit<User, 'password' | 'refreshToken'> {
+    const { password, refreshToken, ...rest } = user;
     void [password, refreshToken];
     return rest;
   }

@@ -37,6 +37,9 @@ lerna-debug.log*
 .env.local
 .env.test
 
+# Terminal logs
+terminal.txt
+
 # SQLite database
 *.db
 *.db-journal

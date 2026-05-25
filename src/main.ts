@@ -44,9 +44,9 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(
-    new AllExceptionsFilter(),
     new HttpExceptionFilter(),
     new PrismaClientExceptionFilter(),
+    new AllExceptionsFilter(),
   );
 
   app.useGlobalInterceptors(new TransformInterceptor());

@@ -2,7 +2,6 @@ import {
   ExceptionFilter,
   Catch,
   ArgumentsHost,
-  HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
@@ -16,42 +15,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message: unknown = 'Internal server error';
+    const nodeEnv = process.env.NODE_ENV || 'development';
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
-      message =
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : typeof exceptionResponse === 'object' && exceptionResponse !== null
-            ? (exceptionResponse as Record<string, unknown>).message ||
-              exceptionResponse
-            : exceptionResponse;
-    } else if (exception instanceof Error) {
-      // In production, don't leak internal error messages to the client
-      const nodeEnv = process.env.NODE_ENV || 'development';
-      message =
-        nodeEnv === 'production' ? 'Internal server error' : exception.message;
-      this.logger.error(
-        `Unhandled exception: ${exception.message}`,
-        exception.stack,
-      );
-    }
+    this.logger.error(
+      `Unhandled exception: ${exception instanceof Error ? exception.message : 'Unknown error'}`,
+      exception instanceof Error ? exception.stack : undefined,
+    );
 
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
-      this.logger.error(
-        `Internal server error: ${JSON.stringify(message)}`,
-        exception instanceof Error ? exception.stack : undefined,
-      );
-    }
-
-    response.status(status).json({
+    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       error: {
-        statusCode: status,
-        message,
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message:
+          nodeEnv === 'production'
+            ? 'Internal server error'
+            : String(exception),
       },
     });
   }

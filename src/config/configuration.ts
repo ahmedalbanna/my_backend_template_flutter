@@ -5,7 +5,7 @@ export default () => ({
 
   app: {
     baseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
-    // frontendUrl: process.env.FRONTEND_URL || 'http://localhost:4200',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:4200',
   },
 
   database: {
@@ -66,7 +66,10 @@ export const validationSchema = Joi.object({
     }),
 
   // OTP — Salt for HMAC-based OTP hashing
-  OTP_HASH_SALT: Joi.string().min(16).default('change-me-otp-salt-min-16-chars').messages({
-    'string.min': 'OTP_HASH_SALT must be at least 16 characters long.',
-  }),
+  OTP_HASH_SALT: Joi.string()
+    .min(16)
+    .default('change-me-otp-salt-min-16-chars')
+    .messages({
+      'string.min': 'OTP_HASH_SALT must be at least 16 characters long.',
+    }),
 });
